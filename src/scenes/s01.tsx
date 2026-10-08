@@ -203,7 +203,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     );
   };
 
-  const shot2 = (lt: number) => {
+  const shot2 = (lt: number, inWhip = false) => {
     const at = (x: number) => addCam(cam2(x), handheld(x, 0.5, 5));
     const cam = resolveCam(at(lt));
     const w = wave2(lt);
@@ -223,7 +223,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     );
     return (
       <AbsoluteFill>
-        <MotionBlur vx={m.dx} vy={m.dy} shutter={0.6}>{world}</MotionBlur>
+        {inWhip ? world : <MotionBlur vx={m.dx} vy={m.dy} shutter={0.6}>{world}</MotionBlur>}
         {flareI > 0.01 && <LensFlare x={top.x} y={top.y} intensity={0.9 * flareI} scale={0.8} streak={1.1} ghosts={0.8} frame={t} seed={7} />}
         <DustField count={60} opacity={0.4} frame={t} camY={-cam.pos[1] * 0.4} seed={12} />
       </AbsoluteFill>
@@ -314,7 +314,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   /* ---------- the edit ---------- */
   const shots = beatShots(from, dur, [
     {beat: 0, name: 'adrift', render: (lt) => shot1(lt)},
-    {beat: 4, name: 'colossus', in: cut(), render: (lt) => shot2(lt)},
+    {beat: 4, name: 'colossus', in: cut(), render: (lt, _p, info) => shot2(lt, !!info.tout)}, // the whip's own blur replaces the shot blur
     {beat: 8, name: 'one·topdown', in: whip({dir: 'up', dur: 12, color: '#D9CEFF'}), render: (lt) => shot3(lt)},
     {beat: 9, name: 'giant·dutch', in: flashCut({dur: 8, peak: 0.5, color: '#CDBBFF', split: 0.4}), render: (lt) => shot4(lt, 0, L(10) - L(9) - 9)},
     {beat: 10, name: 'prompt·macro', in: flashCut({dur: 10, peak: 0.6, color: '#D9CEFF', split: 0.4, punch: 0.1}), render: (lt) => shot5(lt)},

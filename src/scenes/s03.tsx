@@ -136,7 +136,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
           <EnergyBurst x={pa.x} y={pa.y} at={0} frame={lt} count={190} distance={900} dur={46} />
         </AbsoluteFill>
         {/* hero refraction only while the ring is young and bright (backdrop-filter is the priciest effect here) */}
-        <Shockwave x={pa.x} y={pa.y} at={0} frame={lt} rings={3} distort refract={lt < 18} radius={1250} dur={32} />
+        <Shockwave x={pa.x} y={pa.y} at={0} frame={lt} rings={3} distort refract={lt < 14} radius={1250} dur={32} />
         <Shockwave x={960} y={890} at={2} frame={lt} squash={0.2} radius={1600} rings={1} thickness={120} intensity={0.8} />
         <FlareBurst x={pa.x} y={pa.y} at={0} frame={lt} dur={60} peak={2} flash={0.45} />
         <Flash at={0} frame={lt} dur={12} color="cyan" max={0.35} bloom x={pa.x} y={pa.y} />

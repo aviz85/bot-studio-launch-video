@@ -240,7 +240,7 @@ export const cardState = (s: Slot, t: number, inhale?: number) => {
     const rx0 = mix(s.x, SPARK[0], qe), ry0 = mix(s.y, SPARK[1], qe);
     const ca = Math.cos(ang), sa = Math.sin(ang);
     x = rx0 * ca - ry0 * sa; y = rx0 * sa + ry0 * ca;
-    z = mix(z, SPARK[2], qe);
+    z = mix(z, SPARK[2] - 160 - (s.i % 60) * 7, qe); // distinct depths: no coplanar pile-up (BSP sorting cost)
     sc *= 1 - 0.92 * qe;
     rz += ang * 57;
     o *= 1 - smoothstep(0.82, 1, q);

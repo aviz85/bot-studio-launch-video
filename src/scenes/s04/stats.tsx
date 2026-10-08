@@ -190,7 +190,7 @@ export const StatShot: React.FC<{which: 0 | 1 | 2; lt: number; t: number; from: 
           <DustField frame={t} count={70} camX={-lt * 2} boost={kick(f) * 0.5} />
         </>
       )}
-      <HudTag x={150} y={150} t={lt - LAND} label={label} value={`${STATS[which][1]} ${STATS[which][2]} · generated`} />
+      <HudTag x={150} y={872} t={lt - LAND} label={label} value={`${STATS[which][1]} ${STATS[which][2]} · generated`} />
     </AbsoluteFill>
   );
 };

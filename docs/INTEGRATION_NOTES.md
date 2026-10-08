@@ -11,3 +11,8 @@
 - Exits with a flash ramp and push-in peaking on 3761, meeting s10's in-only flash cut. s09's `swoosh_rev` ends on 3761; s10 adds its own zap and shimmer there.
 - Gotcha: content passed as `World backdrop` sits inside the lens shift/zoom, so a full-frame SpaceBackdrop shows its edge when `shiftX` ≠ 0 (same as the s07 finding). Draw space outside the World.
 - Heaviest frames: the zoom-through (3224 area) and the glitch cut at 132, a few overlap frames each.
+
+## s04
+- Shared bug: `GlassOrbNode` (src/ui) draws its bloom outside its box, which clips into a visible light rectangle in 3D (worst when active>0; visible in demo:glass frames 380 and 415). s04 uses a local `HoloOrb` in `src/scenes/s04/common.tsx`. Consider fixing it in src/ui (render bloom inside the element, or as a radial gradient on the element itself).
+- s03's whip direction and its 1075 whip cue match s04's incoming half, so s04 dropped its own whip at 1075.
+- s04 exits at 1397 with a zoom-through into the collect_details orb plus a `swoosh_rev` ending at 1397; s05 opens with `zoomThrough({dur:16})` and an emerge whoosh at 1397.

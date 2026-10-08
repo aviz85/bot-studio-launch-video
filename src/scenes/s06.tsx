@@ -47,7 +47,7 @@ const SLOT: Record<string, Slot> = {
   speaker: {pos: [0, MCY, -700], ry: 0, off: [1900, -320, -5200]},
   clerk: {pos: [660, MCY, -380], ry: -32, off: [700, -1500, -3000]},
 };
-const CORE: V3 = [0, 170, 80];
+const CORE: V3 = [0, 290, 110];
 
 /** scene-local timing (computed from `from`) */
 const timing = (from: number) => {
@@ -285,7 +285,7 @@ const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
           <Core t={t} f={f} on={on} charge={charge} size={260} />
         </Obj>
       )}
-      <Obj x={CORE[0]} y={CORE[1] + 260} z={CORE[2]} billboard nearFade={[80, 420]}>
+      <Obj x={CORE[0]} y={CORE[1] + 225} z={CORE[2]} billboard nearFade={[80, 420]}>
         <CoreLabel t={t} at={tm.ignite + 6} />
       </Obj>
     </World>
@@ -354,7 +354,8 @@ const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
   return (
     <AbsoluteFill style={{overflow: bleed ? 'visible' : 'hidden'}}>
       {/* bleed: oversize the backdrop while a zoom-through scales this shot below 1 (no black frame edges) */}
-      <AbsoluteFill style={{transform: bleed ? 'scale(1.9)' : undefined}}><SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} haze={0} intensity={0.6} seed={7} /></AbsoluteFill>
+      {bleed && <div style={{position: 'absolute', left: -1100, top: -700, width: 4120, height: 2480, background: 'radial-gradient(closest-side, #1A0B34 0%, #0E0620 55%, #06030E 100%)'}} />}
+      <SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} haze={0} intensity={0.6} seed={7} />
       {cc.visible && <div style={{position: 'absolute', left: cc.x - 1100 * cc.scale - 200, top: cc.y - 800 * cc.scale - 200, width: 2200 * cc.scale + 400, height: 1600 * cc.scale + 400, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(150,120,255,0.42), rgba(127,231,255,0.10) 55%, transparent)'}} />}
       {mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
       <svg width={1920} height={1080} style={{position: 'absolute', left: 0, top: 0, mixBlendMode: 'screen'}}>{tethers}</svg>
