@@ -10,15 +10,17 @@
  *                               141 gap (rack focus sparkle→card); 141.5 two more cards burst past the lens.
  *   A2 142    –144    GRID      in: whip right. Medium, front-left: the 3×3 of named frost BotCards slams together on
  *                               half beats; title "A bot that" (142) / "builds bots." (143) in the left negative space.
- *   A3 144    –146    MULTIPLY  in: flash cut. Speed-ramped pull-back (snap–float through the 145 gap–accelerate): the
- *                               wall ripples outward, holo cards flipping in by the dozen; HUD counter ticks up.
+ *   A3 144    –146    MULTIPLY  in: flash cut. Speed-ramped pull-back (snap–float through the 145 gap–accelerate) with
+ *                               speed streaks on the fast phases: the wall ripples outward, holo cards flipping in by the
+ *                               dozen; HUD counter ticks up. Title exits on 145.5.
  *   A4 146    –148    SWEEP     in: whip up. Low-angle Dutch tracking shot along the towering wall; light sweep races
  *                               along it on the 146 crash; far cards keep landing into the fog.
  *   A5 148    –150.5  INFINITE  in: zoom-through. Macro on one card → speed-ramped crane/pull-back to the infinite wall
  *                               receding into fog both ways; second light sweep (R→L) on the 150 crash.
  *   A6 150.5  –152    INHALE    in: hard cut (music drops out). Frontal: every card vortexes back into the sparkle,
  *                               a glint charges in the dark; suck-in.
- *  B · montage of the real designs as glass panes (one cut per beat) + statement words every 2 beats
+ *  B · montage of the real designs as glass panes (one cut per beat) + statement words every 2 beats; each pane gets a HUD
+ *      reticle locking onto its key UI element; a composition guard shifts panes so they never overlap the word
  *   M1 152 policies (low-angle hero)  · flash      "Describe." (L)
  *   M2 153 judgment editor (macro, DOF, dutch) · whip →
  *   M3 154 states (top-down god shot) · flash      "Build." (R)
@@ -29,15 +31,16 @@
  *   M8 159 botscript (grazing macro, DOF) · glitch
  *   M9 159.5 all bots · strobe flash      M10 159.75 Build with AI · strobe flash (accelerating into the hit)
  *  C · FINAL HIT 4298 (beat 160): white-out flash cut + FlareBurst + Shockwave×2 + EnergyBurst + GodRays + CA punch.
- *   END 160–end: avatar on a glass disc, "Bot Studio" (chrome, tracking-in, sheen), tagline (161.5), glass pills
- *               (162.5 →), wink (164.25), slow push + drift + drifting dust/bokeh; fade to black, pure black ≥ ~4552.
+ *   END 160–end: the s03 glass avatar medallion (eyes open → winks once into the brand "<" at 164.25 and holds), "Bot Studio"
+ *               (s03 chrome, tracking-in, sheen), tagline (161.5), glass pills (162.5 →), slow push + drift + drifting
+ *               dust/bokeh/god rays; fade to black from ~4451, pure black ≥ ~4551.
  * ===================================================================================================== */
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {SceneProps} from '../cine/types';
 import {
-  Shots, Shot, CamKey, camPath, camMotion, addCam, handheld, drift, kickPush, kickZoom, resolveCam, depthOf, project,
-  whip, flashCut, zoomThrough, glitchCut, cut, heroRamp, makeRamp, V3,
+  Shots, Shot, CamKey, camPath, addCam, handheld, drift, kickPush, kickZoom, resolveCam, depthOf, project,
+  whip, flashCut, zoomThrough, glitchCut, cut, heroRamp,
 } from '../cine';
 import {FlareBurst, SpeedLines, LightStreak} from '../vfx';
 import {MONO} from '../lib';

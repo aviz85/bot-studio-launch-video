@@ -2,7 +2,6 @@
 // with a statement word slammed every 2 beats: "Describe." "Build." "See." "Ship."
 import React from 'react';
 import {AbsoluteFill, Img, staticFile} from 'remotion';
-import {kick} from '../../lib';
 import {World, Obj, CamKey, camPath, camMotion, addCam, handheld, kickZoom, MotionBlur, V3, resolveCam, project, FloorGrid, m4mul, m4translate, m4rotX, m4rotY, m4rotZ, m4apply} from '../../cine';
 import {SpaceBackdrop, LightStreak, Bokeh} from '../../vfx';
 import {Sheen} from '../../ui';

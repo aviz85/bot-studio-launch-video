@@ -6,16 +6,19 @@
  * energy pulses, floor light pools + reflections, and a comet token that runs the happy path.
  *
  * SHOT LIST (every cut on B(k))                                       transition IN        camera
- *  1  52.0–54.0  GOD        top-down god shot, slow yaw spin + descent  zoomThrough (½,      28mm, pitch −89
- *                           start pops 52 · edge draws · discover 53     from s04)
+ *  1  52.0–54.0  GOD        top-down god shot on the start orb, yaw     zoomThrough (½,      28mm, pitch −89
+ *                           spin + crane up; start pops 52 · trail ·     from s04)
+ *                           discover 53; floor "map table" rings
  *                           HUD counters; "Map every step." 53/53.5/54
  *  2  54.0–56.0  GOD TRACK  tilted overhead (−62°) tracking +x with the  whip → right         30mm
- *                           build front: collect_details 54, follow_up 55
- *  3  56.0–58.0  TILT       booked lands ON the cut (flare burst); crane  flashCut             24mm, −87° → +10°,
- *                           from top-down into a low-angle hero, dutch;                         dutch −9°
+ *                           build front: collect_details 54, follow_up 55;
+ *                           frost "Collect details" state editor springs
+ *                           out of the orb on 54.5 (types the prompt)
+ *  3  56.0–58.0  TILT       booked lands ON the cut (flare burst); crane  flashCut             23mm, −87° → +8.5°,
+ *                           from top-down into a low-angle hero near the floor, dutch;          dutch −6°
  *                           branch → human_handoff draws, pops 57.5
  *                           ("needs a person"); "Branch anywhere." 57/57.5
- *  4  58.0–60.0  HERO DUTCH low angle from the other side (+10° roll)     whip → left          20mm, pitch +14
+ *  4  58.0–60.0  HERO DUTCH low angle from the other side (+10° roll)     whip → left          20mm, pitch +11
  *                           cycle follow_up→discover "needs more" arcs overhead 58→59,
  *                           dashed return human_handoff→discover 58.5→59.5, volumetric beams
  *  5  60.0–62.0  FLY A      flash → in-camera rocket dolly from far behind flashCut + dolly    18mm free cam
@@ -36,6 +39,7 @@ import {
   World, CamSpec, CamKey, ResolvedCam, addCam, handheld, kickPush, kickZoom, camPath, resolveCam, project,
   beatShots, whip, zoomThrough, flashCut, MotionBlur, Shots, smoothstep,
 } from '../cine';
+import type {ShotInfo} from '../cine';
 import {SpaceBackdrop, DustField, Bokeh, Glint, FlareBurst, LensFlare, SpeedLines, VolumetricBeams, LightStreak, GodRays, Shockwave} from '../vfx';
 import {B, clamp} from '../lib';
 import {GraphBack, GraphLight, GraphOrbs, TokenState, graphCounts} from './s05/layers';
@@ -83,28 +87,31 @@ const horizonY = (c: ResolvedCam) => {
 
 type ViewProps = {
   cam: CamSpec; f: number; uid: string; aperture?: number; focus?: number | V3; token?: TokenState | null;
-  activeId?: string | null; mb?: {vx: number; vy: number}; extra?: React.ReactNode; under?: React.ReactNode; grid?: number; bokeh?: boolean;
+  activeId?: string | null; mb?: {vx: number; vy: number}; extra?: React.ReactNode; under?: React.ReactNode; grid?: number; bokeh?: boolean; overscan?: boolean;
+  /** a whip is smearing this shot: skip garnish nobody can see (dust, bokeh, speed lines, flares) */
+  busy?: boolean;
 };
-const GraphView: React.FC<ViewProps> = ({cam, f, uid, aperture = 0, focus, token, activeId, mb, extra, under, grid, bokeh}) => {
+const GraphView: React.FC<ViewProps> = ({cam, f, uid, aperture = 0, focus, token, activeId, mb, extra, under, grid, bokeh, overscan, busy}) => {
   const rc = resolveCam(cam);
   const hz = horizonY(rc);
   const topDown = smoothstep(-25, -60, rc.pitch);
   const body = (
     <AbsoluteFill>
-      {/* overscanned so transitions that scale a shot down (zoom-through landing) never reveal its edge */}
-      <div style={{position: 'absolute', left: -150, top: -85, width: 2220, height: 1250, background: '#04020A'}}>
-        <div style={{position: 'absolute', left: 150, top: 85, width: 1920, height: 1080, transform: 'scale(1.16)'}}>
-          <SpaceBackdrop frame={f} from={0} camX={clamp(-rc.yaw * 10, -420, 420)} camY={clamp(-rc.pitch * 2.5, -240, 240)} horizon={clamp((hz - 540) / 1.16 + 540, -400, 1500)} haze={0.55 * (1 - topDown)} intensity={0.85} />
+      {/* overscan (only while a zoom-through landing scales the shot down) so the shot edge never shows; never
+          during whips, where an overscan would spill onto the neighbouring shot on the strip */}
+      <div style={overscan ? {position: 'absolute', left: -150, top: -85, width: 2220, height: 1250, background: '#04020A'} : {position: 'absolute', left: 0, top: 0, width: 1920, height: 1080, overflow: 'hidden'}}>
+        <div style={{position: 'absolute', left: overscan ? 150 : 0, top: overscan ? 85 : 0, width: 1920, height: 1080, transform: overscan ? 'scale(1.16)' : undefined}}>
+          <SpaceBackdrop frame={f} from={0} camX={clamp(-rc.yaw * 10, -420, 420)} camY={clamp(-rc.pitch * 2.5, -240, 240)} horizon={clamp(overscan ? (hz - 540) / 1.16 + 540 : hz, -400, 1500)} haze={0.55 * (1 - topDown)} intensity={0.85} />
         </div>
       </div>
-      {under}
+      {!busy && under}
       <World camera={rc} aperture={aperture} focus={focus} backdrop={<GraphBack f={f} uid={uid} activeId={activeId} grid={grid} />}>
         <GraphOrbs f={f} activeId={activeId} />
       </World>
       <GraphLight cam={rc} f={f} uid={uid} token={token} />
-      <DustField frame={f} camX={clamp(-rc.yaw * 14, -600, 600)} camY={clamp(-rc.pitch * 4, -300, 300)} count={130} opacity={0.75} />
-      {bokeh && <Bokeh frame={f} camX={clamp(-rc.yaw * 18, -600, 600)} count={16} opacity={0.5} />}
-      {extra}
+      {!busy && <DustField frame={f} camX={clamp(-rc.yaw * 14, -600, 600)} camY={clamp(-rc.pitch * 4, -300, 300)} count={130} opacity={0.75} />}
+      {!busy && bokeh && <Bokeh frame={f} camX={clamp(-rc.yaw * 18, -600, 600)} count={16} opacity={0.5} />}
+      {!busy && extra}
     </AbsoluteFill>
   );
   return mb && Math.hypot(mb.vx, mb.vy) > 1.5 ? <MotionBlur vx={mb.vx} vy={mb.vy} shutter={0.45}>{body}</MotionBlur> : body;
@@ -162,6 +169,12 @@ const EditorOverlay: React.FC<{f: number; rc: ResolvedCam}> = ({f, rc}) => {
       </div>
     </AbsoluteFill>
   );
+};
+
+/** true while a whip transition is mid-smear over this shot (|d| small) */
+const whipBusy = (info: ShotInfo) => {
+  const ph = info.tin?.kind === 'whip' ? info.tin : info.tout?.kind === 'whip' ? info.tout : null;
+  return !!ph && Math.abs(ph.d) <= 3;
 };
 
 /* ------------------------------------------------------------------ */
@@ -225,29 +238,29 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const shots = beatShots(from, dur, [
     {
       beat: 52, name: 'god', in: zoomThrough({dur: 16, blur: 0}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, k1), ...life(lt, 0.6, 1));
         const rc = resolveCam(cam);
-        return <GraphView cam={rc} f={f} uid="s05a" activeId={f >= N.discover.at ? 'discover' : 'start'} extra={<PopGlints rc={rc} f={f} />} />;
+        return <GraphView cam={rc} f={f} uid="s05a" busy={whipBusy(info)} overscan={lt < 9} activeId={f >= N.discover.at ? 'discover' : 'start'} extra={<PopGlints rc={rc} f={f} />} />;
       },
     },
     {
       beat: 54, name: 'god-track', in: whip({dir: 'right', dur: 10}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, k2), ...life(lt, 0.7, 2));
         const rc = resolveCam(cam);
         const act = f >= N.follow_up.at ? 'follow_up' : 'collect_details';
-        return <GraphView cam={rc} f={f} uid="s05b" activeId={act} extra={<><PopGlints rc={rc} f={f} /><EditorOverlay f={f} rc={rc} /></>} />;
+        return <GraphView cam={rc} f={f} uid="s05b" busy={whipBusy(info)} activeId={act} extra={<><PopGlints rc={rc} f={f} /><EditorOverlay f={f} rc={rc} /></>} />;
       },
     },
     {
       beat: 56, name: 'tilt', in: flashCut({dur: 10, peak: 0.85}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, k3), ...life(lt, 0.6, 3));
         const rc = resolveCam(cam);
         const bq = project(rc, N.booked.p);
         return (
-          <GraphView cam={rc} f={f} uid="s05c" activeId={f >= N.human_handoff.at ? 'human_handoff' : 'booked'} bokeh
+          <GraphView cam={rc} f={f} uid="s05c" busy={whipBusy(info)} activeId={f >= N.human_handoff.at ? 'human_handoff' : 'booked'} bokeh
             extra={<>
               <PopGlints rc={rc} f={f} ids={['human_handoff']} />
               {bq.visible && <FlareBurst at={L(56)} x={bq.x} y={bq.y} dur={60} peak={1.5} scale={0.85} flash={0.25} sustain={0.0} seed={5} />}
@@ -257,18 +270,18 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       beat: 58, name: 'hero-dutch', in: whip({dir: 'left', dur: 9}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, k4), ...life(lt, 0.8, 4));
         const rc = resolveCam(cam);
         return (
-          <GraphView cam={rc} f={f} uid="s05d" activeId="discover" bokeh
+          <GraphView cam={rc} f={f} uid="s05d" busy={whipBusy(info)} activeId="discover" bokeh
             under={<VolumetricBeams frame={f} intensity={0.55} beams={[{x: 620, y: -140, angle: 78, width: 10, length: 1500, sweep: 5, color: 'lilac'}, {x: 1380, y: -160, angle: 104, width: 8, length: 1400, sweep: 6, color: 'cyan'}]} />} />
         );
       },
     },
     {
       beat: 60, name: 'fly-a', in: flashCut({dur: 10, split: 0.35, peak: 0.8, color: '#E6FBFF'}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const ff = f;
         // in-camera zoom-through: the lens rockets in from far behind the start orb and settles into the chase
         const rocket = 1 - Math.pow(1 - clamp(lt / 18), 4);
@@ -280,7 +293,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const st = tokenState(ff);
         const lock = orbRect(rc, st.id);
         return (
-          <GraphView cam={rc} f={f} uid="s05e" activeId={st.id} token={{s: ts, trail: 520, I: 1}} grid={0.28}
+          <GraphView cam={rc} f={f} uid="s05e" busy={whipBusy(info)} activeId={st.id} token={{s: ts, trail: 520, I: 1}} grid={0.28}
             under={<SpeedLines frame={f} intensity={clamp(spd / 40 + 1.2 * (1 - rocket))} x={tq.visible ? tq.x : 960} y={tq.visible ? tq.y : 540} travel={f * 0.02 + ts / 300 + 6 * rocket} count={220} />}
             extra={<>
               {tq.visible && <LensFlare x={tq.x} y={tq.y} intensity={0.75} scale={0.6} ghosts={0.6} rays={10} frame={f} seed={7} />}
@@ -291,7 +304,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       beat: 62, name: 'fly-b', in: whip({dir: 'right', dur: 10}), out: flashCut({dur: 14, split: 0.5, peak: 0.9, color: '#E6FBFF'}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const ff = f;
         const cam = addCam(sideCam(ff), handheld(lt, 0.8, 6), kickPush(f, 16, 7));
         const rc = resolveCam(cam);
@@ -302,7 +315,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const bq = project(rc, N.booked.p);
         const rays = clamp((ff - B(63.5) + 2) / 6) ;
         return (
-          <GraphView cam={rc} f={f} uid="s05f" activeId={st.id} token={{s: ts, trail: 600, I: ff > B(63.5) + 6 ? Math.exp(-(ff - B(63.5) - 6) / 6) : 1}} bokeh
+          <GraphView cam={rc} f={f} uid="s05f" busy={whipBusy(info)} activeId={st.id} token={{s: ts, trail: 600, I: ff > B(63.5) + 6 ? Math.exp(-(ff - B(63.5) - 6) / 6) : 1}} bokeh
             under={rays > 0 && bq.visible ? <GodRays frame={f} x={bq.x} y={bq.y} intensity={0.9 * rays} lobes={18} length={1500} color="lilac" secondary="cyan" core={0.9} /> : null}
             extra={<>
               {bq.visible && <Shockwave frame={f} at={B(63.5)} x={bq.x} y={bq.y + R * bq.scale * 0.2} dur={36} radius={1100} squash={0.32} rings={2} thickness={70} intensity={0.85} core={false} />}

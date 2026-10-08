@@ -28,9 +28,9 @@ import type {SceneProps} from '../cine/types';
 import {B, kick} from '../lib';
 import {
   World, Obj, CamSpec, CamKey, V3, addCam, handheld, drift, kickPush, kickZoom, camPath, camMotion, project, resolveCam, depthOf,
-  MotionBlur, Shots, Shot, whip, zoomThrough, flashCut, cut, FloorGrid,
+  MotionBlur, Shots, Shot, whip, zoomThrough, flashCut, cut, FloorGrid, EASES,
 } from '../cine';
-import {SpaceBackdrop, DustField, Bokeh, Shockwave, EnergyBurst, FlareBurst, LensFlare, GodRays, Flash, Glint, Reticle} from '../vfx';
+import {SpaceBackdrop, DustField, Bokeh, Shockwave, EnergyBurst, FlareBurst, LensFlare, GodRays, Flash, Glint, Reticle, SpeedLines} from '../vfx';
 import {Monolith, Core, CoreLabel, ROLES, Role, MW, MH, EMBLEM_Y, MINI_Y} from './s06/minds';
 import {Line, Kicker, GRAD_PISTACHIO, GRAD_CYAN} from './s06/type';
 import {EditorRig, EdState, CHIPS, Chip3D, chipPos, rowPt, tetherAlpha} from './s06/editor';
@@ -199,7 +199,7 @@ const Beams: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => {
 };
 
 /** Screen-space impact effects for the monolith landings and the core ignition (each returns null outside its window). */
-const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm; lite?: boolean}> = ({cam, t, tm, lite}) => {
+const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm; lite?: boolean; fade?: number}> = ({cam, t, tm, lite, fade = 1}) => {
   const rc = resolveCam(cam);
   const out: React.ReactNode[] = [];
   for (const r of ROLES) {
@@ -225,7 +225,7 @@ const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm; lite?: boolean}> = ({
     const c = project(rc, CORE);
     if (c.visible) {
       const g = pr(t, tm.ignite, 24, EZ.expoOut);
-      if (!lite) out.push(<GodRays key="gr" x={c.x} y={c.y} intensity={0.25 + 0.65 * g + 0.4 * imp(t, tm.ignite, 10)} length={1400} lobes={18} color="lilac" secondary="cyan" core={0.6} dust={0.8} />);
+      if (!lite && fade > 0.05) out.push(<GodRays key="gr" x={c.x} y={c.y} intensity={fade * (0.25 + 0.65 * g + 0.4 * imp(t, tm.ignite, 10))} length={1400} lobes={18} color="lilac" secondary="cyan" core={0.6} dust={0.8} />);
       out.push(<Shockwave key="csw" x={c.x} y={c.y} at={tm.ignite} dur={40} radius={1300} rings={3} distort thickness={110} intensity={1} />);
       out.push(<EnergyBurst key="ceb" x={c.x} y={c.y} at={tm.ignite} dur={50} count={160} distance={780} />);
       out.push(<FlareBurst key="cfb" x={c.x} y={c.y} at={tm.ignite} dur={70} peak={2} sustain={0.55} flash={0.25} scale={1} seed={11} />);
@@ -259,7 +259,7 @@ const RoleTags: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => 
 };
 
 /** Full Part A frame for a camera. */
-const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; tags?: boolean; reflect?: number; lite?: boolean}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, tags = true, reflect = 0.22, lite}) => {
+const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; tags?: boolean; reflect?: number; lite?: boolean; warp?: number}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, tags = true, reflect = 0.22, lite, warp = 0}) => {
   const rc = resolveCam(cam);
   const charge = pr(t, tm.charge0, tm.fire - tm.charge0, EZ.sine);
   const fire = pr(t, tm.fire, 8, EZ.expoOut);
@@ -293,14 +293,15 @@ const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
   return (
     <AbsoluteFill style={{overflow: 'hidden'}}>
       <SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} horizon={560} haze={0.45} intensity={0.72} />
-      {!lite && mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
+      {!lite && warp < 0.25 && mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
       <Trails cam={cam} t={t} tm={tm} />
       <Beams cam={cam} t={t} tm={tm} />
-      {!lite && <ImpactFx cam={cam} t={t} tm={tm} />}
+      {!lite && <ImpactFx cam={cam} t={t} tm={tm} fade={1 - warp} />}
       {lite && (() => { const c = project(rc, CORE); return c.visible ? <LensFlare x={c.x} y={c.y} intensity={1.1} scale={0.9} ghosts={0.4} rays={10} seed={11} /> : null; })()}
       {t >= tm.coreIn && t < tm.ignite + 2 && (() => { const c = project(rc, CORE); return c.visible ? <Glint x={c.x} y={c.y} size={160 + 260 * charge} intensity={0.5 + 1.3 * charge + 1.2 * imp(t, tm.coreIn + 4, 8)} color="cyan" spin={1.2} /> : null; })()}
       {!lite && <DustField camX={-rc.yaw * 30} camY={rc.pitch * 20} boost={0.4 * imp(t, tm.ignite, 12)} />}
       {tags && <RoleTags cam={cam} t={t} tm={tm} />}
+      {warp > 0.01 && (() => { const c = project(rc, CORE); return <SpeedLines intensity={warp} x={c.visible ? c.x : 960} y={c.visible ? c.y : 540} travel={t * 0.02 + warp * warp * 3} count={300} color="#E6FBFF" />; })()}
     </AbsoluteFill>
   );
 };
@@ -327,7 +328,7 @@ const edState = (t: number, tm: Tm): EdState => {
 
 const CARD_C: V3 = [0, -40, 0];
 
-const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; reticle?: boolean; barFlare?: boolean; lite?: boolean; bleed?: boolean}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, reticle, barFlare, lite, bleed}) => {
+const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; reticle?: boolean; barFlare?: boolean; lite?: boolean; bleed?: boolean; warp?: number}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, reticle, barFlare, lite, bleed, warp = 0}) => {
   const rc = resolveCam(cam);
   const st = edState(t, tm);
   const kv = kick(f, 8);
@@ -369,6 +370,7 @@ const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
         return q.visible && a > 0.05 ? <Glint key={c.name} x={q.x} y={q.y} size={180} intensity={1.2 * a} color="cyan" /> : null;
       })}
       {!lite && <Bokeh camX={-rc.yaw * 40} camY={rc.pitch * 30} count={26} opacity={0.6} boost={0.3 * kv} />}
+      {warp > 0.01 && <SpeedLines intensity={warp} x={segP.visible ? segP.x : 960} y={segP.visible ? segP.y : 540} travel={t * 0.02 + 3 + (1 - warp) * 2} count={300} color="#E6FBFF" />}
     </AbsoluteFill>
   );
 };
@@ -397,9 +399,9 @@ const CopyA: React.FC<{t: number; tm: Tm}> = ({t, tm}) => {
 const CopyB: React.FC<{t: number; tm: Tm; dur: number}> = ({t, tm, dur}) => {
   const {L} = tm;
   const outA = L(76) - 10;
-  // whip-out: ride the same strip as the shot whip (pre = 7 frames before the cut at the scene end)
-  const u = clamp01((t - (dur - 7)) / 7);
-  const wx = -1920 * 0.6 * EZ.expoIn(u);
+  // whip-out: ride the same strip as the shot whip (dur 10, split .6 → pre 6 frames before the scene end)
+  const u = clamp01((t - (dur - 6)) / 6);
+  const wx = -1920 * 0.6 * EASES.expoIn(u);
   const blocks: React.ReactNode[] = [];
   if (t >= L(73) - 1 && t < outA + 12) {
     blocks.push(
@@ -478,13 +480,14 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 0, target: [60, -10, 0], yaw: -34, pitch: 7, dist: 2700, roll: -6, focal: 24},
     {at: 9, ease: 'expoOut', dist: 2300, yaw: -26},
     {at: A7 - 14, ease: 'linear', yaw: 16, pitch: 5, dist: 2080, roll: 4, target: [-30, 10, 0]},
-    {at: A7, ease: 'expoIn', yaw: 22, pitch: 2, dist: 820, roll: 7, target: CORE},
+    {at: A7, ease: 'expoIn', yaw: 22, pitch: 2, dist: 700, roll: 7, target: CORE},
   ];
 
   // B1 — macro on the Type segment
   const b1: CamKey[] = [
-    {at: 0, target: rowPt('type', -60, 14), yaw: -24, pitch: 34, dist: 1500, roll: -9, focal: 40},
-    {at: L(73) - L(72), yaw: -16, pitch: 30, dist: 1330, roll: -6},
+    {at: 0, target: rowPt('type', -60, 14), yaw: -30, pitch: 38, dist: 2600, roll: -14, focal: 40},
+    {at: 9, ease: 'expoOut', yaw: -24, pitch: 34, dist: 1480, roll: -9},
+    {at: L(73) - L(72), ease: 'linear', yaw: -16, pitch: 30, dist: 1330, roll: -6},
   ];
   // B2 — low lateral track along the criteria rows
   const b2: CamKey[] = [
@@ -529,7 +532,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const life = (lt: number, amp: number, seed: number) => [handheld(lt, amp, seed), kickPush(f, 18), jolt(t, tm.land.judge, 1.1), jolt(t, tm.land.speaker, 1), jolt(t, tm.land.clerk, 1.2), jolt(t, tm.ignite, 1.4)];
 
   const shots: Shot[] = [
-    {from: 0, to: L(65.5), name: 'A1 judge', in: flashCut({dur: 8, split: 0, peak: 0.32}),
+    {from: 0, to: L(65.5), name: 'A1 judge', in: flashCut({dur: 14, split: 0.5, peak: 0.9, color: '#E6FBFF'}), // in-half; matches s05's out-half flash
       render: (lt, _p, info) => <PartA cam={addCam(camPath(lt, a1), ...life(lt, 0.8, 1))} t={info.t} f={info.t + from} from={from} tm={tm} />},
     {from: L(65.5), to: L(66), name: 'A2 judge macro', in: cut(),
       render: (lt, _p, info) => {
@@ -552,12 +555,13 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const at = (x: number) => camPath(x, a7);
         const m = camMotion(at, lt, CORE);
         const cam = addCam(at(lt), ...life(lt, 0.7, 7));
-        return <PartA cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} mb={{vx: m.dx, vy: m.dy}} tags={false} lite={!!info.tout} />;
+        const warp = Math.pow(clamp01((lt - (A7 - 14)) / 14), 1.6);
+        return <PartA cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} mb={{vx: m.dx, vy: m.dy}} tags={false} warp={warp} />;
       }},
-    {from: L(72), to: L(73), name: 'B1 type', in: zoomThrough({dur: 14, depth: 2.2}),
+    {from: L(72), to: L(73), name: 'B1 type', in: flashCut({dur: 14, split: 0.5, peak: 1, color: '#EAF8FF', punch: 0.1}),
       render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, b1), ...bLife(lt, 0.6, 11));
-        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('type', -60, 14)} aperture={18 * clamp01(lt / 10)} reticle lite={lt < 0} bleed={lt < 8} />;
+        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('type', -60, 14)} aperture={18 * clamp01((lt - 2) / 10)} reticle warp={Math.pow(1 - clamp01(lt / 12), 1.5)} />;
       }},
     {from: L(73), to: L(74.5), name: 'B2 criteria', in: whip({dir: 'up', dur: 10}),
       render: (lt, _p, info) => {
@@ -586,7 +590,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const cam = addCam(at(lt), ...bLife(lt, 0.7, 15));
         return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rackB5(cam)} aperture={14 * clamp01((lt - 5) / 10)} mb={{vx: m.dx, vy: m.dy}} />;
       }},
-    {from: L(79), to: dur, name: 'B6 hero', in: cut(), out: whip({dir: 'right', dur: 12}),
+    {from: L(79), to: dur, name: 'B6 hero', in: cut(), out: whip({dir: 'right', dur: 10}), // out-half; s07 opens with the matching in-half
       render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, b6), ...bLife(lt, 0.6, 16));
         return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={CARD_C} aperture={8} />;

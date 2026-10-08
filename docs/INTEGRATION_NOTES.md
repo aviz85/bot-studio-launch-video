@@ -31,3 +31,9 @@
 - SpaceBackdrop camX/camY: the nebula texture has only ~±115 px of margin, so large offsets expose a hard edge. s01 clamps to ±420; consider clamping inside the component.
 - Chromium renders 3D layers at full native size however small they appear; render far objects at half or quarter resolution.
 - s01 ends collapsing to near-black (old-TV off) at 430; s02 opens from darkness.
+
+## s02
+- Confirms the `GlassOrbNode` glow-square bug (it also shows in demo:glass HoloGraph orbs). Fix: draw the glow as a radial gradient inside the element's own box. s02 uses a local `HoloOrb` in `src/scenes/s02/fragments.tsx`.
+- `Beam3D`: crossed 3D ribbons inside a World with other objects clipped the whole World horizontally. s02 uses screen-space SVG beams (`ScreenBeam` in `env.tsx`).
+- `Obj nearFade` measures the object's centre depth, so wide objects fade while still in view.
+- The riser ends at 806 and the `suck_in` ends exactly at 860, so s03 must not add another suck_in. Frame 859 is near-black with the glint at (960, 540), where s03's FlareBurst fires.

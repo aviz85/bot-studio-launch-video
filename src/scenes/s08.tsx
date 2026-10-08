@@ -39,7 +39,7 @@ import type {SceneProps} from '../cine/types';
 import {
   World, Obj, CamSpec, CamKey, V3, addCam, handheld, drift, kickPush, kickZoom, kickShake, camPath, camMotion, MotionBlur,
   Shots, beatShots, whip, zoomThrough, flashCut, glitchCut, lightLeakDissolve, spinBlur, cut, FloorGrid, resolveCam, depthOf,
-  project, snapIn, makeRamp, rackFocus, mix,
+  project, snapIn, makeRamp, rackFocus, mix, shutterBlur,
 } from '../cine';
 import {
   SpaceBackdrop, DustField, Bokeh, GodRays, VolumetricBeams, SpeedLines, Glint, LensFlare, FlareBurst, Shockwave, EnergyBurst,
@@ -99,15 +99,18 @@ const CapFlares: React.FC<{cam: CamSpec; f: number; n?: number; scale?: number; 
 /* ------------------------------------------------------------------ */
 /* Environments                                                         */
 /* ------------------------------------------------------------------ */
-const SpaceBG: React.FC<{cam: CamSpec; from: number; floorY: number; intensity?: number; grid?: number; horizon?: number}> = ({cam, from, floorY, intensity = 1, grid = 0.42, horizon}) => {
+/** Axis-aligned, clamped motion blur (one anisotropic blur; the diagonal rotate/unrotate path cost ~2 s/frame here). */
+const mbAxis = (m: {dx: number; dy: number}, max = 32) => ({sx: Math.min(max, shutterBlur(m.dx)), sy: Math.min(max, shutterBlur(m.dy))});
+
+/** Floor grid (inside the World backdrop, so it follows the lens shift/zoom). */
+const SpaceBG: React.FC<{cam: CamSpec; from: number; floorY: number; intensity?: number; grid?: number}> = ({floorY, grid = 0.42}) =>
+  grid > 0 ? <FloorGrid y={floorY} opacity={grid} step={120} extent={4200} center={[0, -400]} fade={[900, 4000]} color="rgb(185,160,250)" /> : null;
+
+/** Deep-space sky in SCREEN space (outside the World: a lens shift must not uncover the frame), with camera parallax. */
+const Sky: React.FC<{cam: CamSpec; from: number; intensity?: number}> = ({cam, from, intensity = 1.1}) => {
   const rc = resolveCam(cam);
-  const hz = horizon ?? clamp(540 + Math.tan((rc.pitch * Math.PI) / 180) * rc.persp, -200, 1300);
-  return (
-    <>
-      <SpaceBackdrop from={from} intensity={intensity} camX={-rc.yaw * 9} camY={rc.pitch * 9} horizon={hz} haze={0.55} />
-      {grid > 0 && <FloorGrid y={floorY} opacity={grid} step={120} extent={4200} center={[0, -400]} fade={[900, 4000]} color="rgb(185,160,250)" />}
-    </>
-  );
+  const hz = clamp(540 + Math.tan((rc.pitch * Math.PI) / 180) * rc.persp * rc.zoom + rc.shiftY, -200, 1300);
+  return <SpaceBackdrop from={from} intensity={intensity} camX={-rc.yaw * 9} camY={rc.pitch * 9} horizon={hz} haze={0.55} />;
 };
 
 /* ------------------------------------------------------------------ */
@@ -246,7 +249,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const ca = 2 + 16 * impulse(lt, 0, 1, 7);
     return (
       <AbsoluteFill>
-        <MotionBlur vx={m.dx} vy={m.dy} threshold={1.5}>
+        <Sky cam={cam} from={from} />
+        <MotionBlur {...mbAxis(m)} threshold={1.5}>
           <ChromaticAberration amount={lt < 22 ? ca : 0}>
             <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.2} />}>
               <FieldSet f={f} />
@@ -276,7 +280,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const m = camMotion(at, lt, [0, FY - 250, 0]);
     return (
       <AbsoluteFill>
-        <MotionBlur vx={m.dx} vy={m.dy} threshold={1.5}>
+        <Sky cam={cam} from={from} />
+        <MotionBlur {...mbAxis(m)} threshold={1.5}>
           <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.1} />}>
             <FieldSet f={f} />
           </World>
@@ -307,7 +312,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const sheetO = 1 - smoothstep(34, 62, tau);
     return (
       <AbsoluteFill>
-        <MotionBlur vx={m.dx} vy={m.dy} threshold={2}>
+        <Sky cam={cam} from={from} />
+        <MotionBlur {...mbAxis(m, 26)} threshold={2}>
           <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={700} intensity={1} />}>
             <UITheme look="frost">
               <DashRig t={lt + L(108)} f={f} E={E} times={TIMES} beams={1} nf={[60, 380]} glow={0.25} crisp={{sig: 1.6}} />
@@ -344,6 +350,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const corner = project(cam, [770, -480, 0]);
     return (
       <AbsoluteFill>
+        <Sky cam={cam} from={from} />
         <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={700} intensity={1.15} />}>
           <UITheme look="frost">
             <DashRig t={lt + L(110)} f={f} E={E} times={TIMES} beams={1} flash={lock} sheen={lt >= SNAP ? prog(lt, SNAP + 2, 34, (x) => x) : undefined} glow={0.3 + 0.5 * lock} />
@@ -381,6 +388,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const focusD = flying ? mix(depthOf(rc, flying.p), depthOf(rc, spk), smoothstep(0.35, 1, flying.u)) : depthOf(rc, spk);
     return (
       <AbsoluteFill>
+        <Sky cam={cam} from={from} />
         <World camera={cam} focus={focusD} aperture={16} maxBlur={16} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
             <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{speaker: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'decisions']} flyRows />
@@ -413,6 +421,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const pg = project(cam, [dec[0] - 140, dec[1] - 7, dec[2]]);
     return (
       <AbsoluteFill>
+        <Sky cam={cam} from={from} />
         <World camera={cam} focus={fd} aperture={9} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
             <DashRig t={lt + L(114)} f={f} E={E} times={TIMES} crisp={{decisions: 2, clerk: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'title', 'chat']} />
@@ -442,6 +451,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const rr = projRect(cam, [mx(1), ly - 20, tl[2]], 210, 140);
     return (
       <AbsoluteFill>
+        <Sky cam={cam} from={from} />
         <World camera={cam} focus={[mx(mix(0.08, 0.88, follow)), ly, tl[2]]} aperture={10} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.35} />}>
           <UITheme look="frost">
             <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{timeline: 2}} skip={['side', 'top', 'base', 'mainPane', 'title', 'speaker']} />
@@ -472,6 +482,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const rb = projRect(cam, [ch[0] - 18, ch[1] + 288, ch[2]], 214, 82);
     return (
       <AbsoluteFill>
+        <Sky cam={cam} from={from} />
         <World camera={cam} focus={bub} aperture={8} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
             <DashRig t={tUI} f={f} E={E} times={TIMES} crisp={{chat: 2}} skip={['side', 'top', 'title', 'base', 'mainPane', 'speaker', 'sig']} />

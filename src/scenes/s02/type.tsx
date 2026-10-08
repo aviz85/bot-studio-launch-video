@@ -54,8 +54,10 @@ export const Statement: React.FC<{
   /** extra glow on 'signal' words (0..1, e.g. kick) */
   pulse?: number;
   tracking?: string;
+  /** reflections: plain gradient instead of the live signal-bar fill (40 gradient layers) */
+  cheap?: boolean;
   style?: React.CSSProperties;
-}> = ({words, t, f, size, weight = 900, dur = 16, glow = 0.55, pulse = 0, tracking = '-0.045em', style}) => (
+}> = ({words, t, f, size, weight = 900, dur = 16, glow = 0.55, pulse = 0, tracking = '-0.045em', cheap, style}) => (
   <div
     style={{
       position: 'relative', isolation: 'isolate', display: 'flex', alignItems: 'flex-end', whiteSpace: 'nowrap', fontFamily: DISPLAY, fontWeight: weight, fontSize: size, lineHeight: 1,
@@ -68,10 +70,10 @@ export const Statement: React.FC<{
       const u = clamp((t - wd.at) / dur);
       const e = expoOut(u);
       const blur = (1 - e) * size * 0.07;
-      const sig = wd.fill === 'signal';
+      const sig = wd.fill === 'signal' && !cheap;
       const fillStyle: React.CSSProperties = sig
         ? {...signalBg(f, size), WebkitTextStroke: `${Math.max(1.5, size * 0.006).toFixed(1)}px rgba(214,255,240,${(0.55 + 0.4 * pulse).toFixed(3)})`}
-        : {backgroundImage: wd.fill ?? GRAD_V};
+        : {backgroundImage: wd.fill === 'signal' ? 'linear-gradient(180deg, #E9FFF6, #45E3B0 60%, #AA8CFF)' : wd.fill ?? GRAD_V};
       return (
         <span key={i} style={{display: 'inline-block', overflow: 'hidden', padding: '0.08em 0.05em 0.2em', marginRight: `${wd.gap ?? 0.18}em`, opacity: u <= 0 ? 0 : undefined}}>
           <span

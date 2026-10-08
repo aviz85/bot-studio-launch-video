@@ -1,12 +1,13 @@
 // s10 Act A — "A bot that builds bots.": the Build-with-AI sparkle spawns glass bot cards that multiply into an
 // infinite wall receding into fog. Set pieces + per-shot camera rigs.
 import React from 'react';
-import {AbsoluteFill} from 'remotion';
+import {AbsoluteFill, Img} from 'remotion';
 import {DISPLAY, FONT, kick} from '../../lib';
 import {World, Obj, FloorGrid, ResolvedCam, resolveCam, project, depthOf, CamSpec, V3} from '../../cine';
 import {SpaceBackdrop, Glint, GodRays, SpeedLines} from '../../vfx';
-import {Avatar, Icon, BOTS, BotCard, UITheme, Rim, Sheen} from '../../ui';
-import {lb, clamp01, mix, smoothstep, eo, ei, eio, decay, HudLabel} from './common';
+import {Icon, BOTS, BotCard, UITheme, Rim, Sheen} from '../../ui';
+import {avatarUri} from './endcard';
+import {lb, clamp01, mix, smoothstep, eo, eio, decay, HudLabel} from './common';
 
 /* ------------------------------------------------------------------ */
 /* Wall layout                                                          */
@@ -111,7 +112,7 @@ export const GlassBot: React.FC<{b: BotDef; lod: number; look: Look; sheen?: num
         <>
           <div style={{display: 'flex', alignItems: 'flex-start', position: 'relative'}}>
             <div style={{width: 84, height: 84, borderRadius: 42, background: holo ? 'rgba(140,107,234,0.3)' : 'rgba(222,211,250,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: holo ? 'inset 0 0 0 1px rgba(160,130,255,0.5), 0 0 22px -6px rgba(160,130,255,0.8)' : undefined}}>
-              {lod === 0 ? (b.icon === 'avatar' ? <Avatar size={76} /> : <I size={42} color={holo ? '#CDBBFF' : '#6A45E0'} />) : <div style={{width: 40, height: 40, borderRadius: 20, background: holo ? 'rgba(205,187,255,0.5)' : 'rgba(106,69,224,0.45)'}} />}
+              {lod === 0 ? (b.icon === 'avatar' ? <Img src={avatarUri(1)} style={{width: 76, height: 76}} /> : <I size={42} color={holo ? '#CDBBFF' : '#6A45E0'} />) : <div style={{width: 40, height: 40, borderRadius: 20, background: holo ? 'rgba(205,187,255,0.5)' : 'rgba(106,69,224,0.45)'}} />}
             </div>
             <div style={{flex: 1}} />
             <div style={{padding: '8px 16px', borderRadius: 999, fontWeight: 600, fontSize: 17, whiteSpace: 'nowrap',
@@ -144,6 +145,8 @@ const HeroBot: React.FC<{n: number; sheen?: number; flash?: number; look: Look}>
   <UITheme look={look}>
     <div style={{position: 'relative', width: CW, borderRadius: 28}}>
       <BotCard b={BOTS[n]} w={CW} />
+      {/* brand hero avatar (s03 art, "<" wink) over the kit avatar so every logo in the film matches */}
+      {BOTS[n].icon === 'avatar' && <Img src={avatarUri(1)} style={{position: 'absolute', left: 32, top: 32, width: 76, height: 76, borderRadius: 38}} />}
       {sheen !== undefined && sheen > 0 && sheen < 1 && (
         <div style={{position: 'absolute', inset: 0, borderRadius: 28, overflow: 'hidden'}}><Sheen p={sheen} strength={0.8} width={22} color={look === 'holo' ? '200,240,255' : '255,255,255'} z={5} /></div>
       )}

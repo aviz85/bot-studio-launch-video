@@ -113,8 +113,9 @@ export const LockReticle: React.FC<{f: number; at: number; x: number; y: number;
   );
   return (
     <div style={{position: 'absolute', left: 0, top: 0, width: 1920, height: 1080, opacity: o * blink, pointerEvents: 'none'}}>
-      <svg width={1920} height={1080} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', filter: `drop-shadow(0 0 6px rgba(${color},0.9))`}}>
-        <g transform={`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(2)})`}>
+      {/* svg sized to the reticle so the glow filter only covers its own bounds */}
+      <svg width={2 * (rr * 1.45 + 40)} height={2 * (rr * 1.45 + 40)} style={{position: 'absolute', left: x - rr * 1.45 - 40, top: y - rr * 1.45 - 40, overflow: 'visible', filter: `drop-shadow(0 0 6px rgba(${color},0.9))`}}>
+        <g transform={`translate(${(rr * 1.45 + 40).toFixed(1)} ${(rr * 1.45 + 40).toFixed(1)}) rotate(${rot.toFixed(2)})`}>
           {br(-1, -1, 0)}{br(1, -1, 1)}{br(1, 1, 2)}{br(-1, 1, 3)}
           <circle r={rr * 0.86} fill="none" stroke={`rgba(${color},0.55)`} strokeWidth={1.5} strokeDasharray="6 10" transform={`rotate(${(f * 2.4).toFixed(1)})`} />
           <path d={`M${-rr - 26} 0 H${-rr - 8} M${rr + 8} 0 H${rr + 26} M0 ${-rr - 26} V${-rr - 8} M0 ${rr + 8} V${rr + 26}`} stroke={`rgba(${color},0.9)`} strokeWidth={2} />

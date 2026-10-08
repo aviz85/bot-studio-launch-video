@@ -61,11 +61,13 @@ const ribbon = (pts: SP[], w: (i: number, p: SP) => number) => {
 
 /** screen discs of the orbs currently on screen (for the software z-test) */
 type Disc = {x: number; y: number; r: number; d: number};
+export const ORB_NEAR_FADE: [number, number] = [170, 560];
+const sstep = (a: number, b: number, v: number) => { const u = clamp((v - a) / (b - a)); return u * u * (3 - 2 * u); };
 const orbDiscs = (c: ResolvedCam, f: number): Disc[] =>
   NODES.filter((n) => f >= n.at).map((n) => {
     const q = P(c, n.p);
     return {x: q.x, y: q.y, r: R * q.sc * 0.9, d: q.d};
-  }).filter((q) => q.d > NEAR);
+  }).filter((q) => q.d > NEAR && sstep(ORB_NEAR_FADE[0], ORB_NEAR_FADE[1], q.d) > 0.5); // mostly-faded orbs don't occlude
 const behindGlass = (q: SP, discs: Disc[]) => discs.some((o) => q.d > o.d + 20 && Math.hypot(q.x - o.x, q.y - o.y) < o.r);
 
 /** sample a stretch of a polyline into screen-space runs, split at the near plane and where glass occludes */
@@ -448,7 +450,7 @@ const LiteOrb: React.FC<{tone: string; label: string; icon?: string; start?: boo
   );
 };
 
-export const GraphOrbs: React.FC<{f: number; activeId?: string | null; nearFade?: [number, number]; labels?: boolean; labelScale?: number}> = ({f, activeId, nearFade = [70, 420], labels = true, labelScale = 1}) => {
+export const GraphOrbs: React.FC<{f: number; activeId?: string | null; nearFade?: [number, number]; labels?: boolean; labelScale?: number}> = ({f, activeId, nearFade = ORB_NEAR_FADE, labels = true, labelScale = 1}) => {
   const cam = useCam();
   return (
   <>

@@ -28,7 +28,7 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {SceneProps} from '../cine/types';
-import {B, kick, clamp, lerp, band} from '../lib';
+import {kick, clamp, band} from '../lib';
 import {
   World, Obj, FloorGrid, CamSpec, CamKey, V3, addCam, handheld, kickPush, camPath, camMotion, resolveCam, project, depthOf,
   MotionBlur, Shots, Shot, whip, zoomThrough, flashCut, glitchCut, cut, beatsToLocal, makeRamp, rackFocus,
@@ -103,7 +103,7 @@ const LineObj: React.FC<{words: WordSpec[]; size: number; y: number; z: number; 
     {refl > 0 && (
       <Obj x={0} y={2 * FLOOR - y + size * 0.02} z={z} nearFade={nearFade} dof={false} o={refl}
         innerStyle={{transform: 'scaleY(-1)', WebkitMaskImage: 'linear-gradient(to bottom, transparent 38%, rgba(0,0,0,1) 100%)', maskImage: 'linear-gradient(to bottom, transparent 38%, rgba(0,0,0,1) 100%)'}}>
-        <Statement words={words} t={t} f={f} size={size} weight={weight} glow={0} />
+        <Statement words={words} t={t} f={f} size={size} weight={weight} glow={0} cheap />
       </Obj>
     )}
   </>
@@ -197,15 +197,16 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   /* SH2 · high dutch lateral track */
   const sh2 = (lt: number) => {
     const keys: CamKey[] = [
-      {at: 0, pos: [1260, -560, 1650], lookAt: [-160, FLOOR - 150, -500], focal: 30, roll: 8},
-      {at: 60, pos: [760, -470, 1330], roll: 6},
+      {at: 0, pos: [1380, -600, 1600], lookAt: [-60, FLOOR - 150, -500], focal: 30, roll: 9},
+      {at: 60, pos: [470, -420, 1230], lookAt: [60, FLOOR - 150, -500], roll: 5},
     ];
     const cam = addCam(camPath(lt, keys), handheld(lt, 0.7, 5), kickPush(f, 60, 10));
     return buildWorld({cam: cam, coreI: 0.9 + 0.9 * pulse, lt: lt});
   };
 
   /* SH3 · "see it think?" hero with rack focus */
-  const sh3 = (lt: number) => {
+  // tx = a transition is running on this shot: its own blur/DOF filters are dropped (the transition blurs anyway)
+  const sh3 = (lt: number, tx = false) => {
     const keys: CamKey[] = [
       {at: 0, pos: [-70, FLOOR - 110, L2.z + 2250], lookAt: [0, FLOOR - 300, L2.z], focal: 26, roll: 1.5},
       {at: 56, pos: [40, FLOOR - 95, L2.z + 1900], roll: -1},
@@ -214,7 +215,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const rc = resolveCam(cam);
     const near = depthOf(rc, SHARDS[7].p), far = depthOf(rc, [0, L2.y, L2.z]);
     const focus = rackFocus(lt, near, far, 2, 18);
-    return buildWorld({cam: cam, aperture: 9, focus: focus, coreI: 1 + 0.9 * pulse, lt: lt});
+    return buildWorld({cam: cam, aperture: tx ? 0 : 9, focus: focus, coreI: 1 + 0.9 * pulse, lt: lt});
   };
 
   /* SH4 · the dive over the line into the core (speed ramp: snap on the kick, glide, expo-in) */
@@ -230,16 +231,16 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     ];
     return camPath(tau, keys);
   };
-  const sh4 = (lt: number) => {
+  const sh4 = (lt: number, tx = false) => {
     const cam = addCam(sh4At(lt), handheld(lt, 0.9, 9), kickPush(f, 80, 9));
     const m = camMotion(sh4At, Math.max(0, lt));
     const end = clamp((lt - 34) / 20);
     const coreI = 1 + 0.9 * pulse + 3.2 * Math.pow(end, 2.2);
-    const mb = lt < 6 ? 0 : 0.6;
+    const mb = tx ? 0 : 0.6;
     return (
       <MotionBlur vx={m.dx * mb} vy={m.dy * mb}>
         {buildWorld({cam: cam, coreI: coreI, lt: lt, l2Fade: [5, 40], l1Fade: [80, 500], dust: 1 - end, refl: 0})}
-        <SpeedLines intensity={warpI} travel={warpTravel} count={260} glow={0.5} frame={t} />
+        <SpeedLines intensity={warpI + 0.75 * Math.pow(end, 1.5)} travel={warpTravel + 1.2 * Math.pow(end, 2)} count={280} glow={0.5} frame={t} />
       </MotionBlur>
     );
   };
@@ -252,10 +253,10 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 0, pos: [-1250, -70, 1200], lookAt: [-120, -300, -60], focal: 19, roll: -13},
     {at: 30, ease: 'expoOut', pos: [-260, -55, 820], lookAt: [220, -340, -160], roll: -7},
   ]);
-  const m1 = (lt: number) => {
+  const m1 = (lt: number, tx = false) => {
     const m = camMotion(m1At, lt, [0, -250, 0]);
     return (
-      <MontFrame {...mc} cam={addCam(m1At(lt), handheld(lt, 1.2, 11))} label="Judge · signal wall" sub="45 typed signals · live" vx={m.dx * 0.5} vy={m.dy * 0.5} streak={{start: L(24) - 4, angle: 8, offset: -220}}>
+      <MontFrame {...mc} cam={addCam(m1At(lt), handheld(lt, 1.2, 11))} label="Judge · signal wall" sub="45 typed signals · live" vx={tx ? 0 : m.dx * 0.5} vy={tx ? 0 : m.dy * 0.5} streak={{start: L(24) - 4, angle: 8, offset: -220}}>
         <Obj x={0} y={0} z={0}>
           <SignalBars3D layout="field" f={f} t={999} tilt={90} cols={9} rows={4} count={36} barW={58} gap={42} maxH={560} labels={false} highlight={13}
             values={(i, ff) => clamp(0.14 + 0.86 * Math.abs(Math.sin(i * 2.17 + ff * 0.19)) * (0.62 + 0.38 * Math.sin(i * 0.71 + ff * 0.05)))} />
@@ -269,14 +270,14 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 0, target: [0, 0, 0], yaw: 42, pitch: 12, dist: 2100, focal: 50, roll: -10},
     {at: 28, ease: 'expoOut', yaw: 8, pitch: -3, dist: 1650, roll: 3},
   ]);
-  const m2 = (lt: number) => {
+  const m2 = (lt: number, tx = false) => {
     const cam = addCam(m2At(lt), handheld(lt, 1, 12));
     const m = camMotion(m2At, lt);
     return (
-      <MontFrame {...mc} cam={cam} aperture={8} focus={[0, 0, 0]} behind={<>
+      <MontFrame {...mc} cam={cam} aperture={tx ? 0 : 8} focus={[0, 0, 0]} behind={<>
           <ScreenBeam a={[0, 0, 0]} b={[-820, 170, -1100]} pulse={(lt / 20) % 1} />
           <ScreenBeam a={[0, 0, 0]} b={[950, -230, -1800]} color="205,187,255" o={0.85} pulse={((lt + 10) / 22) % 1} />
-        </>} label="State · collect_details" sub="active · token arrived" vx={m.dx * 0.5} vy={m.dy * 0.5} streak={{start: L(25) - 2, angle: 172, color: 'violet', offset: 160}}>
+        </>} label="State · collect_details" sub="active · token arrived" vx={tx ? 0 : m.dx * 0.5} vy={tx ? 0 : m.dy * 0.5} streak={{start: L(25) - 2, angle: 172, color: 'violet', offset: 160}}>
         <Obj x={-820} y={170} z={-1100} billboard><HoloOrb size={300} label="discover" icon="chat" tone="lilac" active={0.4} t={t} /></Obj>
         <Obj x={950} y={-230} z={-1800} billboard><HoloOrb size={300} label="booked" icon="calendar" tone="green" active={0.3} t={t} /></Obj>
         <Obj x={0} y={0} z={0} billboard><HoloOrb size={440} label="collect_details" icon="doc" tone="cyan" active={1} t={t * 1.6} p={0.4 + 0.6 * rv(lt, -2, 10)} /></Obj>
@@ -289,10 +290,10 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 0, pos: [-1550, -250, 760], lookAt: [-480, 0, 0], focal: 24, roll: 7},
     {at: 30, ease: 'expoOut', pos: [-560, -130, 1060], lookAt: [-10, 10, 0], roll: 3},
   ]);
-  const m3 = (lt: number) => {
+  const m3 = (lt: number, tx = false) => {
     const m = camMotion(m3At, lt);
     return (
-      <MontFrame {...mc} cam={addCam(m3At(lt), handheld(lt, 1.1, 13))} label="Policy · when / and / then" sub="acknowledge_happy_start · global" vx={m.dx * 0.5} vy={m.dy * 0.5} streak={{start: L(26) - 3, angle: 0, color: 'violet', offset: 260}}>
+      <MontFrame {...mc} cam={addCam(m3At(lt), handheld(lt, 1.1, 13))} label="Policy · when / and / then" sub="acknowledge_happy_start · global" vx={tx ? 0 : m.dx * 0.5} vy={tx ? 0 : m.dy * 0.5} streak={{start: L(26) - 3, angle: 0, color: 'violet', offset: 260}}>
         <Obj x={0} y={0} z={0}>
           <CodeLine p={clamp((lt + 3) / 15)} t={lt} sheen={clamp((lt - 6) / 18)} flash={Math.max(0, 1 - lt / 8)} />
         </Obj>
@@ -317,7 +318,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
           <div style={{width: 1040, height: 1040, borderRadius: '50%', border: '1.5px solid rgba(205,187,255,0.3)', background: 'radial-gradient(closest-side, rgba(69,227,176,0.16), transparent 70%)'}} />
         </Obj>
         <Obj x={-60} y={0} z={300} rx={90}><DecisionRow size={40} o={0.75} /></Obj>
-        <Obj x={0} y={-1} z={-40} rx={90}><DecisionPill p={clamp((lt - 1) / 9)} t={lt} size={66} pulse={Math.max(0, 1 - Math.abs(lt - 8) / 8)} /></Obj>
+        <Obj x={0} y={-1} z={-40} rx={90}><DecisionPill p={clamp(lt / 7)} t={lt} size={66} pulse={Math.max(0, 1 - Math.abs(lt - 8) / 8)} /></Obj>
       </MontFrame>
     );
   };
@@ -399,7 +400,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill style={{background: '#020106'}}>
         <AbsoluteFill style={{background: `radial-gradient(60% 55% at 50% 50%, rgba(60,30,120,${(0.22 * charge * (1 - end)).toFixed(3)}), transparent 70%)`}} />
         {imp < 1 && (
-          <AbsoluteFill style={{transform: `scale(${Math.max(0.001, sc).toFixed(4)})`, transformOrigin: '50% 50%', opacity: 1 - imp * 0.5, WebkitMaskImage: 'radial-gradient(closest-side, black 35%, transparent 100%)', maskImage: 'radial-gradient(closest-side, black 35%, transparent 100%)', filter: `brightness(${(1 + 1.5 * imp).toFixed(3)})`}}>
+          <AbsoluteFill style={{transform: `scale(${Math.max(0.001, sc).toFixed(4)})`, transformOrigin: '50% 50%', opacity: 1 - imp * 0.85, WebkitMaskImage: 'radial-gradient(closest-side, black 35%, transparent 100%)', maskImage: 'radial-gradient(closest-side, black 35%, transparent 100%)', filter: `brightness(${(1 + 1.5 * imp).toFixed(3)})`}}>
             {m8(13 + lt)}
           </AbsoluteFill>
         )}
@@ -421,13 +422,13 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const shots: Shot[] = [
     {name: 'SH1 ignition', from: L(16), to: L(18), render: (lt) => sh1(lt)},
     {name: 'SH2 high dutch', from: L(18), to: L(20), in: flashCut({dur: 8, split: 0.25, peak: 0.42, color: '#CDBBFF', punch: 0.04}), render: (lt) => sh2(lt)},
-    {name: 'SH3 see it think', from: L(20), to: L(22), in: zoomThrough({dur: 14, depth: 2.2, color: '#DCCBFF'}), render: (lt) => sh3(lt)},
-    {name: 'SH4 dive', from: L(22), to: L(24), in: whip({dir: 'up', dur: 10, color: '#CDBBFF'}), render: (lt) => sh4(lt)},
-    {name: 'M1 bars', from: L(24), to: L(25), in: flashCut({dur: 12, split: 0.5, peak: 1, color: '#EAFBFF', punch: 0.08}), render: (lt) => m1(lt)},
-    {name: 'M2 orb', from: L(25), to: L(26), in: whip({dir: 'right', dur: 8}), render: (lt) => m2(lt)},
-    {name: 'M3 code', from: L(26), to: L(27), in: glitchCut({dur: 8, slices: false, seed: 2}), render: (lt) => m3(lt)},
+    {name: 'SH3 see it think', from: L(20), to: L(22), in: zoomThrough({dur: 14, depth: 2.2, color: '#DCCBFF'}), render: (lt, _p, i) => sh3(lt, !!(i.tin || i.tout))},
+    {name: 'SH4 dive', from: L(22), to: L(24), in: whip({dir: 'up', dur: 10, color: '#CDBBFF'}), render: (lt, _p, i) => sh4(lt, !!(i.tin || i.tout))},
+    {name: 'M1 bars', from: L(24), to: L(25), in: flashCut({dur: 12, split: 0.5, peak: 1, color: '#EAFBFF', punch: 0.08}), render: (lt, _p, i) => m1(lt, !!(i.tin || i.tout))},
+    {name: 'M2 orb', from: L(25), to: L(26), in: whip({dir: 'right', dur: 8}), render: (lt, _p, i) => m2(lt, !!(i.tin || i.tout))},
+    {name: 'M3 code', from: L(26), to: L(27), in: glitchCut({dur: 8, slices: false, seed: 2}), render: (lt, _p, i) => m3(lt, !!(i.tin || i.tout))},
     {name: 'M4 decision', from: L(27), to: L(28), in: whip({dir: 'down', dur: 8, color: '#E7F4B9'}), render: (lt) => m4(lt)},
-    {name: 'M5 clerk', from: L(28), to: L(28.5), in: flashCut({dur: 6, peak: 0.6, color: '#7FE7FF'}), render: (lt) => m5(lt)},
+    {name: 'M5 clerk', from: L(28), to: L(28.5), in: flashCut({dur: 6, peak: 0.38, color: '#7FE7FF'}), render: (lt) => m5(lt)},
     {name: 'M6 avatar', from: L(28.5), to: L(29), in: whip({dir: 'left', dur: 7}), render: (lt) => m6(lt)},
     {name: 'M7 chips', from: L(29), to: L(29.5), in: glitchCut({dur: 6, slices: false, seed: 5}), render: (lt) => m7(lt)},
     {name: 'M8 warp', from: L(29.5), to: L(30), in: zoomThrough({dur: 8, depth: 1.8}), render: (lt) => m8(lt)},
