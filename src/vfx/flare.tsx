@@ -1,4 +1,4 @@
-/* Anamorphic lens flares, flare bursts and glints. Pure CSS gradients, screen-blended. */
+/* Anamorphic lens flares (single additive canvas), flare bursts and glints. Screen-blended. */
 import React from 'react';
 import {CX, CY, H, VC, W, clamp01, colorOf, easeOutExpo, fbm1, full, hash, impulse, mixHex, radialFill, rgba, scratchCanvas, useCanvasDraw, useF} from './util';
 
@@ -190,7 +190,7 @@ export type FlareBurstProps = Omit<LensFlareProps, 'intensity'> & {
   dur?: number;
   /** Peak intensity. */
   peak?: number;
-  /** Residual intensity it settles to (0 = fully decays). */
+  /** Residual intensity held after the hit (still fades out over the last 35% of `dur`). */
   sustain?: number;
   /** Full-frame light veil on impact 0..1. */
   flash?: number;

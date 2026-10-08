@@ -98,7 +98,7 @@ export type SwooshProps = {
 };
 
 /** A broad swipe of light crossing the frame — the light component of a whip/swipe transition. */
-export const Swoosh: React.FC<SwooshProps> = ({start, dur = 20, angle = -12, width = 700, trail = 1700, color, secondary, intensity = 1, streaks = true, seed = 9, frame}) => {
+export const Swoosh: React.FC<SwooshProps> = ({start, dur = 20, angle = -12, width = 520, trail = 1800, color, secondary, intensity = 1, streaks = true, seed = 9, frame}) => {
   const f = useF(frame);
   if (f < start - 1 || f > start + dur + 2) return null;
   const col = colorOf(color, VC.cyan);
@@ -114,11 +114,11 @@ export const Swoosh: React.FC<SwooshProps> = ({start, dur = 20, angle = -12, wid
     <>
       <Rotated angle={angle}>
         <div style={{position: 'absolute', left: head - T, top: -width / 2, width: T, height: width, opacity: clamp01(a), transform: 'skewX(-18deg)',
-          background: `linear-gradient(90deg, transparent 0%, ${rgba(sec, 0.06)} 35%, ${rgba(sec, 0.16)} 65%, ${rgba(col, 0.38)} 88%, ${rgba(hot, 0.9)} 97.5%, transparent 100%)`,
-          maskImage: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 25%, black 50%, rgba(0,0,0,0.6) 75%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 25%, black 50%, rgba(0,0,0,0.6) 75%, transparent 100%)'}} />
-        <div style={{position: 'absolute', left: head - 90, top: -width * 0.8, width: 120, height: width * 1.6, opacity: clamp01(a * 0.9), transform: 'skewX(-18deg)',
-          background: `radial-gradient(ellipse 50% 50% at 60% 50%, ${rgba('#ffffff', 0.85)} 0%, ${rgba(col, 0.35)} 40%, transparent 100%)`}} />
+          background: `linear-gradient(90deg, transparent 0%, ${rgba(sec, 0.07)} 30%, ${rgba(sec, 0.2)} 62%, ${rgba(col, 0.42)} 88%, ${rgba(hot, 0.95)} 97%, ${rgba(col, 0.6)} 98.6%, transparent 100%)`,
+          maskImage: 'radial-gradient(ellipse 100% 50% at 100% 50%, black 0%, rgba(0,0,0,0.75) 35%, rgba(0,0,0,0.3) 70%, transparent 100%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 100% 50% at 100% 50%, black 0%, rgba(0,0,0,0.75) 35%, rgba(0,0,0,0.3) 70%, transparent 100%)'}} />
+        <div style={{position: 'absolute', left: head - 70, top: -width * 0.62, width: 90, height: width * 1.24, opacity: clamp01(a * 0.95), transform: 'skewX(-18deg)',
+          background: `radial-gradient(ellipse 50% 50% at 60% 50%, ${rgba('#ffffff', 0.9)} 0%, ${rgba(col, 0.4)} 35%, ${rgba(sec, 0.1)} 70%, transparent 100%)`}} />
       </Rotated>
       {streaks && <LightStreak start={start - 2} dur={dur + 4} angle={angle} count={9} spread={width * 0.9} length={trail * 0.5} thickness={2.5} color={col} secondary={sec} intensity={intensity} stagger={0.3} seed={seed} frame={f} />}
     </>

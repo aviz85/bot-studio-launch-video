@@ -61,7 +61,7 @@ export const FilmGrain: React.FC<FilmGrainProps> = ({amount = 0.08, size = 1.5, 
     ctx.fillRect(0, 0, cw + TILE, ch + TILE);
   });
   if (amount <= 0.001) return null;
-  return <canvas ref={ref} width={cw} height={ch} style={{...full, opacity: clamp01(amount * 2.5), mixBlendMode: blend}} />;
+  return <canvas ref={ref} width={cw} height={ch} style={{...full, opacity: clamp01(amount * 1.6), mixBlendMode: blend}} />;
 };
 
 /* ======================================================================
@@ -255,12 +255,13 @@ const getVignette = (amount: number, fringe: number) => {
   ctx.restore();
   if (fringe > 0) {
     const lg = ctx.createLinearGradient(0, 0, W, 0);
-    lg.addColorStop(0, `rgba(40,150,255,${(0.07 * fringe).toFixed(4)})`);
-    lg.addColorStop(0.1, `rgba(40,150,255,${(0.015 * fringe).toFixed(4)})`);
-    lg.addColorStop(0.22, 'rgba(0,0,0,0)');
-    lg.addColorStop(0.78, 'rgba(0,0,0,0)');
-    lg.addColorStop(0.9, `rgba(255,60,170,${(0.015 * fringe).toFixed(4)})`);
-    lg.addColorStop(1, `rgba(255,60,170,${(0.07 * fringe).toFixed(4)})`);
+    // dark, saturated tints: bright content at the edges shifts cool (left) / magenta (right); blacks stay black
+    lg.addColorStop(0, `rgba(0,46,120,${(0.16 * fringe).toFixed(4)})`);
+    lg.addColorStop(0.08, `rgba(0,46,120,${(0.05 * fringe).toFixed(4)})`);
+    lg.addColorStop(0.2, 'rgba(0,0,0,0)');
+    lg.addColorStop(0.8, 'rgba(0,0,0,0)');
+    lg.addColorStop(0.92, `rgba(120,0,80,${(0.05 * fringe).toFixed(4)})`);
+    lg.addColorStop(1, `rgba(120,0,80,${(0.16 * fringe).toFixed(4)})`);
     ctx.fillStyle = lg;
     ctx.fillRect(0, 0, W, H);
   }

@@ -3,12 +3,12 @@
 //   node tools/preview.mjs demo:cine --from 860 --dur 900 --range 860-1760:9
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {FONT, DISPLAY, MONO, kick, band} from '../lib';
+import {FONT, DISPLAY, MONO, band} from '../lib';
 import type {SceneProps} from '../cine/types';
 import {
   World, Obj, CamSpec, CamKey, addCam, handheld, drift, kickPush, kickShake, kickZoom, camPath, camMotion, moves, heroAngle,
   heroRamp, rackFocus, depthOf, resolveCam, MotionBlur, Echo, Shots, Shot, whip, zoomThrough, flashCut, glitchCut, lightLeakDissolve,
-  irisShockwave, spinBlur, cut, FloorGrid, beatsToLocal, strobe, onBeat, p01, mix, project, V3,
+  irisShockwave, spinBlur, cut, FloorGrid, beatsToLocal, strobe, onBeat, project, V3,
 } from '../cine';
 
 /* ------------------------------------------------------------------ */
@@ -181,7 +181,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
 
   const shots: Shot[] = [
     {
-      name: 'orbit+crane+dutch', from: L(32), to: L(36),
+      name: 'orbit+crane+dutch', from: L(32), to: L(36), in: flashCut({dur: 16, split: 0, peak: 1}), // incoming half only: the drop
       render: (lt) => <><Cam cam={addCam(camPath(lt, s1), handheld(lt, 0.7), kickPush(f, 26))} f={f} /><Label text="Orbit · crane · dutch" sub="camPath (Catmull-Rom) + handheld + kickPush" /></>,
     },
     {
@@ -254,7 +254,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       },
     },
     {
-      name: 'dolly zoom', from: L(60), to: dur, in: whip({dir: 'left', dur: 11}),
+      name: 'dolly zoom', from: L(60), to: dur, in: whip({dir: 'left', dur: 11}), out: whip({dir: 'down', dur: 10}), // out-half only: hands over to the next scene
       render: (lt) => <><Cam cam={addCam(camPath(lt, s11), drift(lt))} f={f} /><Label text="Dolly zoom (vertigo)" sub="moves.dollyZoom" /></>,
     },
   ];

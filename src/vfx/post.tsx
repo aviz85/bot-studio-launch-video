@@ -56,7 +56,7 @@ export type ChromaticAberrationProps = {
   style?: React.CSSProperties;
 };
 
-/** RGB channel split (SVG feColorMatrix + feOffset), single render of children. Bypassed when amount < 0.25. */
+/** RGB split (red one way, green+blue the other) via SVG feColorMatrix + feOffset; children rendered once. Bypassed when amount < 0.25. */
 export const ChromaticAberration: React.FC<ChromaticAberrationProps> = ({children, amount = 6, angle = 0, style}) => {
   const id = useSafeId('ca');
   const on = Math.abs(amount) >= 0.25;
@@ -69,11 +69,9 @@ export const ChromaticAberration: React.FC<ChromaticAberrationProps> = ({childre
           <filter id={id} x="-5%" y="-5%" width="110%" height="110%" colorInterpolationFilters="sRGB">
             <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
             <feOffset in="r" dx={-dx} dy={-dy} result="ro" />
-            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
-            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
-            <feOffset in="b" dx={dx} dy={dy} result="bo" />
-            <feBlend in="ro" in2="g" mode="screen" result="rg" />
-            <feBlend in="rg" in2="bo" mode="screen" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
+            <feOffset in="gb" dx={dx} dy={dy} result="gbo" />
+            <feBlend in="ro" in2="gbo" mode="screen" />
           </filter>
         </svg>
       )}
@@ -116,32 +114,34 @@ export const Glitch: React.FC<GlitchProps> = ({children, amount = 1, displace = 
   const sd = Math.floor(hash2(step, seed + 7) * 9999);
   // table: mostly neutral (0.5) with a few strongly displaced bands; vary per step
   const tv: string[] = [];
-  for (let i = 0; i < 14; i++) {
+  const NT = 9;
+  for (let i = 0; i < NT; i++) {
     const r = hash2(step * 31 + i, seed);
-    tv.push(r < 0.62 ? '0.5' : (r < 0.81 ? 0.5 - 0.5 * hash2(i, step) : 0.5 + 0.5 * hash2(i + 9, step)).toFixed(3));
+    const mid = Math.abs(i - (NT - 1) / 2) < 1.6; // centre entries are hit most often → keep them mostly neutral
+    tv.push(r < (mid ? 0.72 : 0.4) ? '0.5' : (0.5 + (hash2(i + 9, step) - 0.5) * 1.0).toFixed(3));
   }
-  const freqY = (0.012 + 0.03 * hash2(step, seed + 3)) * density;
+  const freqY = (0.0035 + 0.011 * hash2(step, seed + 3)) * density;
   const split = rgb * A * (hash2(step, seed + 5) > 0.5 ? 1 : -1);
   return (
     <div style={{...fullBox, ...style}}>
       {on && (
         <svg width="0" height="0" style={{position: 'absolute'}} aria-hidden>
           <filter id={id} x="-5%" y="0%" width="110%" height="100%" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency={`0.0006 ${freqY.toFixed(4)}`} numOctaves={1} seed={sd} result="n" />
+            {/* noise computed only in a 2px column, quantised, then tiled across → horizontal slice bands at ~zero cost */}
+            <feTurbulence type="fractalNoise" baseFrequency={`0.0006 ${freqY.toFixed(4)}`} numOctaves={1} seed={sd} x="0" y="-100" width="2" height="4400" result="n" />
             <feComponentTransfer in="n" result="q">
               <feFuncR type="discrete" tableValues={tv.join(' ')} />
               <feFuncG type="discrete" tableValues="0.5" />
               <feFuncB type="discrete" tableValues="0.5" />
               <feFuncA type="discrete" tableValues="1" />
             </feComponentTransfer>
-            <feDisplacementMap in="SourceGraphic" in2="q" scale={displace * A} xChannelSelector="R" yChannelSelector="G" result="d" />
+            <feTile in="q" x="-4000" y="-4000" width="12000" height="12000" result="t" />
+            <feDisplacementMap in="SourceGraphic" in2="t" scale={displace * A} xChannelSelector="R" yChannelSelector="G" result="d" />
             <feColorMatrix in="d" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
             <feOffset in="r" dx={-split} dy={0} result="ro" />
-            <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
-            <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
-            <feOffset in="b" dx={split} dy={0} result="bo" />
-            <feBlend in="ro" in2="g" mode="screen" result="rg" />
-            <feBlend in="rg" in2="bo" mode="screen" />
+            <feColorMatrix in="d" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
+            <feOffset in="gb" dx={split} dy={0} result="gbo" />
+            <feBlend in="ro" in2="gbo" mode="screen" />
           </filter>
         </svg>
       )}

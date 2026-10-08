@@ -187,10 +187,10 @@ export const bokehSprite = (color: string, rim = 0.5) => {
   c = mk(128);
   const x = c.getContext('2d')!;
   const g = x.createRadialGradient(64, 64, 0, 64, 64, 62);
-  g.addColorStop(0, rgba(color, 0.55));
-  g.addColorStop(0.6, rgba(color, 0.62));
-  g.addColorStop(0.86, rgba(mixHex(color, '#ffffff', 0.35), 0.62 + 0.38 * rim));
-  g.addColorStop(0.94, rgba(color, 0.35));
+  g.addColorStop(0, rgba(color, 0.5));
+  g.addColorStop(0.55, rgba(color, 0.56));
+  g.addColorStop(0.84, rgba(mixHex(color, '#ffffff', 0.12), 0.6 + 0.3 * rim));
+  g.addColorStop(0.93, rgba(color, 0.3));
   g.addColorStop(1, rgba(color, 0));
   x.fillStyle = g;
   x.beginPath();

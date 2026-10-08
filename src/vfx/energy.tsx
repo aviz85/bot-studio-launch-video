@@ -25,8 +25,10 @@ export type ShockwaveProps = {
   intensity?: number;
   /** Vertical squash 0..1 (1 = circle, 0.3 = ring lying on a floor). */
   squash?: number;
-  /** Refraction look: a blurred/brightened lens band riding the ring (uses backdrop-filter; costs more). */
+  /** Cheap distortion look: chromatic double edge (magenta inside / cyan outside) + a dark refraction band. */
   distort?: boolean;
+  /** Real refraction: backdrop-filter blur/brighten band riding the ring. EXPENSIVE (~+250 ms/frame) — hero moments only. */
+  refract?: boolean;
   /** Bright flash core at the origin. */
   core?: boolean;
   frame?: number;
@@ -34,7 +36,7 @@ export type ShockwaveProps = {
 
 /** Expanding energy ring(s) with a hot leading edge and a soft trailing glow (+ optional refraction band). */
 export const Shockwave: React.FC<ShockwaveProps> = ({
-  x, y, at, dur = 42, radius = 1100, thickness = 90, color, secondary, rings = 2, gap = 5, intensity = 1, squash = 1, distort = false, core = true, frame,
+  x, y, at, dur = 42, radius = 1100, thickness = 90, color, secondary, rings = 2, gap = 5, intensity = 1, squash = 1, distort = false, refract = false, core = true, frame,
 }) => {
   const f = useF(frame);
   const col = colorOf(color, VC.cyan);
@@ -62,7 +64,13 @@ export const Shockwave: React.FC<ShockwaveProps> = ({
     items.push(
       <div key={i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, background: g, transform: squash !== 1 ? `scaleY(${squash})` : undefined, mixBlendMode: 'screen', maskImage: nm, WebkitMaskImage: nm}} />,
     );
-    if (distort && i === 0) {
+    if (distort) {
+      const dg = `radial-gradient(circle closest-side, transparent ${px(r - th * 0.75)}, ${rgba('#05020A', 0.35 * a)} ${px(r - th * 0.4)}, ${rgba('#05020A', 0.12 * a)} ${px(r - 14)}, ${rgba(VC.magenta, 0.55 * a)} ${px(r - 9)}, transparent ${px(r - 5)}, transparent ${px(r + 6)}, ${rgba(VC.cyan, 0.5 * a)} ${px(r + 10)}, transparent ${px(r + 16)})`;
+      items.unshift(
+        <div key={'c' + i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, background: dg, transform: squash !== 1 ? `scaleY(${squash})` : undefined}} />,
+      );
+    }
+    if (refract && i === 0) {
       const m = `radial-gradient(circle closest-side, transparent ${Math.max(0, r - th * 0.9)}px, black ${r - th * 0.35}px, black ${r - 2}px, transparent ${r + th * 0.15}px)`;
       items.unshift(
         <div key={'d' + i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, transform: squash !== 1 ? `scaleY(${squash})` : undefined,

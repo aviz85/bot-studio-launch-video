@@ -36,7 +36,7 @@ export type ParticleFieldProps = {
 
 const DEFAULT_COLORS: Record<ParticleKind, string[]> = {
   dust: ['#E8E0FF', '#CDBBFF', '#FFFFFF', '#B9A4F5'],
-  bokeh: ['#8C6BEA', '#B08CFF', '#7FE7FF', '#CDBBFF', '#E7F4B9'],
+  bokeh: ['#7B4DFF', '#9A5CFF', '#C04FD0', '#4FC8FF', '#6A45E0', '#D9F08A'],
   sparkle: ['#FFFFFF', '#CFF6FF', '#E2D6FF'],
   ember: ['#E7F4B9', '#FFD58A', '#FF9DB8', '#CDBBFF'],
 };

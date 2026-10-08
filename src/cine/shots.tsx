@@ -11,7 +11,7 @@ import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {FRAME_H, FRAME_W} from './camera';
 import {EASES, clamp01, mix, smoothstep} from './math';
 import {GlitchFx, MotionBlur, SpinBlur, ZoomBlur, shutterBlur, spinBlurPx, zoomBlurPx} from './blur';
-import {rand} from '../lib';
+import {B, rand} from '../lib';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                                */
@@ -85,9 +85,9 @@ export const whip = (o: {dir?: WhipDir; dur?: number; split?: number; blur?: num
 
 /** Zoom-through: the camera flies INTO the outgoing shot (accelerating scale + zoom blur + fade) while the
  *  incoming emerges from depth behind it and lands at the cut with residual zoom streaks. 12–18 frames. */
-export const zoomThrough = (o: {dur?: number; split?: number; depth?: number; color?: string} = {}): Transition => {
+export const zoomThrough = (o: {dur?: number; split?: number; depth?: number; color?: string; blur?: number} = {}): Transition => {
   const dur = o.dur ?? 14, split = o.split ?? 0.6;
-  return {kind: 'zoomThrough', pre: dur * split, post: dur * (1 - split), depth: o.depth ?? 5, color: o.color ?? '#CFF6FF'};
+  return {kind: 'zoomThrough', pre: dur * split, post: dur * (1 - split), depth: o.depth ?? 3.2, color: o.color ?? '#CFF6FF', blur: o.blur ?? 1};
 };
 
 /** Flash cut: exposure blooms into a flash that peaks exactly on the cut, incoming punches in. 6–12 frames. */
@@ -97,9 +97,9 @@ export const flashCut = (o: {dur?: number; split?: number; color?: string; peak?
 };
 
 /** Glitch cut: slice displacement + RGB split + interleaved slices of the other shot for a few frames. 6–10 frames. */
-export const glitchCut = (o: {dur?: number; split?: number; strength?: number; seed?: number} = {}): Transition => {
+export const glitchCut = (o: {dur?: number; split?: number; strength?: number; seed?: number; slices?: boolean} = {}): Transition => {
   const dur = o.dur ?? 8, split = o.split ?? 0.45;
-  return {kind: 'glitchCut', pre: dur * split, post: dur * (1 - split), strength: o.strength ?? 1, seed: o.seed ?? 1};
+  return {kind: 'glitchCut', pre: dur * split, post: dur * (1 - split), strength: o.strength ?? 1, seed: o.seed ?? 1, slices: o.slices ?? true};
 };
 
 /** Light-leak dissolve: crossfade that completes ON the cut under a drifting anamorphic light leak. 16–40 frames. */
@@ -116,9 +116,9 @@ export const irisShockwave = (o: {dur?: number; pre?: number; x?: number; y?: nu
 };
 
 /** Spin blur: the outgoing spins up with rotational blur; the incoming spins down into place. 10–14 frames. */
-export const spinBlur = (o: {dur?: number; angle?: number; dir?: 1 | -1} = {}): Transition => {
+export const spinBlur = (o: {dur?: number; angle?: number; dir?: 1 | -1; blur?: number} = {}): Transition => {
   const dur = o.dur ?? 12;
-  return {kind: 'spinBlur', pre: dur / 2, post: dur / 2, angle: o.angle ?? 120, dir: o.dir ?? 1};
+  return {kind: 'spinBlur', pre: dur / 2, post: dur / 2, angle: o.angle ?? 120, dir: o.dir ?? 1, blur: o.blur ?? 1};
 };
 
 /** Plain crossfade completing on the cut (utility). */
@@ -174,12 +174,12 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
           out: {style: {transform: `scale(${sc.toFixed(4)})`, opacity: 1 - smoothstep(0.5, 1, u)}},
           in: u > 0.3 ? {style: {transform: `scale(${inSc(d).toFixed(4)})`}} : null,
           inOnTop: false,
-          group: {zoom: Math.min(90, zoomBlurPx(rate) + 40 * smoothstep(0.4, 1, u))},
+          group: {zoom: tr.blur * Math.min(90, zoomBlurPx(rate) + 40 * smoothstep(0.4, 1, u))},
           overlay: <ZoomOverlay I={I} color={tr.color} />,
         };
       }
       const rate = inSc(d + 0.5) / inSc(d - 0.5) - 1;
-      return {in: {style: {transform: `scale(${inSc(d).toFixed(4)})`}}, group: {zoom: Math.min(90, zoomBlurPx(rate) + 36 * (1 - E.expoOut(v)))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
+      return {in: {style: {transform: `scale(${inSc(d).toFixed(4)})`}}, group: {zoom: tr.blur * Math.min(90, zoomBlurPx(rate) + 36 * (1 - E.expoOut(v)))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
     }
     case 'flashCut': {
       const fl = before ? tr.peak * Math.pow(u, 2.2) : tr.peak * Math.pow(1 - v, 2.4);
@@ -192,7 +192,7 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
       const g = tr.strength * (before ? smoothstep(0, 1, u) : 1 - smoothstep(0, 1, v));
       const seed = Math.floor(cutFrame * 1.7 + d * 3.1 + tr.seed * 13);
       const jx = (rand(seed * 1.3) - 0.5) * 40 * g;
-      const bandsOther = (before ? u > 0.45 : v < 0.35) ? slicePath(seed, 3 + Math.floor(rand(seed) * 4)) : null;
+      const bandsOther = tr.slices && (before ? u > 0.45 : v < 0.35) ? slicePath(seed, 3 + Math.floor(rand(seed) * 4)) : null;
       const overlay = g > 0.02 ? <GlitchOverlay g={g} seed={seed} /> : null;
       const main: Fx = {style: {transform: `translateX(${jx.toFixed(1)}px)`}};
       const other: Fx | null = bandsOther ? {style: {clipPath: `path('${bandsOther}')`, transform: `translateX(${(-jx * 1.5).toFixed(1)}px)`}} : null;
@@ -227,7 +227,7 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
       const thAt = (dd: number) => (dd < 0 ? tr.dir * A * E.expoIn(clamp01((dd + pre) / pre)) : -tr.dir * A * (1 - E.expoOut(clamp01(dd / post))));
       const w = Math.abs(thAt(d + 0.5) - thAt(d - 0.5)) % 180; // deg/frame
       const sc = coverScale(th) * (1 + 0.12 * Math.exp(-Math.abs(d) / 3));
-      const fx: Fx = {style: {transform: `rotate(${th.toFixed(3)}deg) scale(${sc.toFixed(4)})`}, spin: Math.min(90, spinBlurPx(w))};
+      const fx: Fx = {style: {transform: `rotate(${th.toFixed(3)}deg) scale(${sc.toFixed(4)})`}, spin: tr.blur * Math.min(90, spinBlurPx(w))};
       const I = Math.exp(-Math.abs(d) / 2.5);
       const overlay = I > 0.03 ? <AbsoluteFill style={{background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,${(0.5 * I).toFixed(3)}) 0%, rgba(191,244,255,${(0.18 * I).toFixed(3)}) 30%, transparent 65%)`, mixBlendMode: 'screen'}} /> : null;
       return before ? {out: fx, overlay} : {in: fx, overlay};
@@ -338,14 +338,18 @@ const ShockRing: React.FC<{r: number; x: number; y: number; I: number; color: st
 /* Fx wrapper                                                           */
 /* ------------------------------------------------------------------ */
 const full: React.CSSProperties = {position: 'absolute', left: 0, top: 0, width: FRAME_W, height: FRAME_H};
+// Filters wrap the TRANSFORMED layer from outside, so they run in screen space at 1× resolution (a filter inside a
+// scale(2) transform would be computed on 4× the pixels) and blur directions stay screen-aligned.
 const FxWrap: React.FC<{fx?: Fx | null; children: React.ReactNode}> = ({fx, children}) => {
   if (!fx) return <div style={full}>{children}</div>;
-  let node: React.ReactNode = children;
+  let node: React.ReactNode = <div style={{...full, ...fx.style}}>{children}</div>;
+  // clip overflow of scaled/rotated layers before filtering: the filter source then holds only on-screen pixels
+  if (fx.style?.transform && (fx.zoom || fx.spin || fx.glitch || fx.sx || fx.sy)) node = <div style={{...full, overflow: 'hidden'}}>{node}</div>;
   if (fx.glitch && fx.glitch.amount > 0.01) node = <GlitchFx amount={fx.glitch.amount} seed={fx.glitch.seed}>{node}</GlitchFx>;
   if (fx.spin && fx.spin > 0.6) node = <SpinBlur px={fx.spin}>{node}</SpinBlur>;
   if (fx.zoom && fx.zoom > 0.6) node = <ZoomBlur px={fx.zoom}>{node}</ZoomBlur>;
   if ((fx.sx ?? 0) > 0.6 || (fx.sy ?? 0) > 0.6) node = <MotionBlur sx={fx.sx} sy={fx.sy}>{node}</MotionBlur>;
-  return <div style={{...full, ...fx.style}}>{node}</div>;
+  return <div style={full}>{node}</div>;
 };
 
 /* ------------------------------------------------------------------ */
@@ -360,7 +364,9 @@ export type ShotsProps = {
   style?: React.CSSProperties;
 };
 
-const trAt = (shots: Shot[], i: number): Transition | undefined => (i <= 0 || i >= shots.length ? undefined : shots[i].in ?? shots[i - 1].out);
+/** Transition at boundary i (between shot i-1 and shot i). Boundary 0 = the first shot's `in`, boundary n = the last
+ *  shot's `out` — these render only one half (cross-scene transitions: outgoing half in scene A, incoming half in B). */
+const trAt = (shots: Shot[], i: number): Transition | undefined => (i < 0 || i > shots.length ? undefined : shots[i]?.in ?? shots[i - 1]?.out);
 
 /** Renders a list of shots, cutting exactly at each shot's `from`, overlapping neighbours during transitions. */
 export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => {
@@ -370,16 +376,16 @@ export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => 
   let i = 0;
   while (i < shots.length - 1 && t >= shots[i + 1].from) i++;
 
-  type L = {idx: number; fxs: (Fx | null | undefined)[]; z: number; tin?: TxPhase; tout?: TxPhase};
-  const layers = new Map<number, L>();
-  const add = (idx: number, fx: Fx | null | undefined, z: number, ph?: {tin?: TxPhase; tout?: TxPhase}) => {
+  type L = {key: string; idx: number; fxs: (Fx | null | undefined)[]; z: number; tin?: TxPhase; tout?: TxPhase};
+  const layers = new Map<string, L>();
+  const add = (idx: number, fx: Fx | null | undefined, z: number, ph?: {tin?: TxPhase; tout?: TxPhase}, key = String(idx)) => {
     if (idx < 0 || idx >= shots.length) return;
-    const l = layers.get(idx) ?? {idx, fxs: [], z};
+    const l = layers.get(key) ?? {key, idx, fxs: [], z};
     l.fxs.push(fx);
     l.z = Math.max(l.z, z);
     if (ph?.tin) l.tin = ph.tin;
     if (ph?.tout) l.tout = ph.tout;
-    layers.set(idx, l);
+    layers.set(key, l);
   };
   const overlays: React.ReactNode[] = [];
   const groups: Fx[] = [];
@@ -392,7 +398,8 @@ export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => 
     const fr = txFrame(trIn, d, shots[i].from);
     const ph: TxPhase = {kind: trIn.kind, d, pre: trIn.pre, post: trIn.post, p: clamp01((d + trIn.pre) / Math.max(1, trIn.pre + trIn.post))};
     const top = fr.inOnTop !== false;
-    if (fr.out) add(i - 1, fr.out, top ? 1 : 2, {tout: ph});
+    // half transition (no previous shot in this scene): a whip strip wraps the current shot into the empty slot
+    if (fr.out) add(i - 1 >= 0 ? i - 1 : trIn.kind === 'whip' ? i : -1, fr.out, top ? 1 : 2, {tout: ph}, i - 1 >= 0 ? String(i - 1) : `${i}w`);
     if (fr.in !== null) add(i, fr.in ?? undefined, top ? 2 : 1, {tin: ph});
     if (fr.group) groups.push(fr.group);
     if (fr.overlay) overlays.push(<React.Fragment key="oi">{fr.overlay}</React.Fragment>);
@@ -406,7 +413,7 @@ export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => 
     const ph: TxPhase = {kind: trOut.kind, d, pre: trOut.pre, post: trOut.post, p: clamp01((d + trOut.pre) / Math.max(1, trOut.pre + trOut.post))};
     const top = fr.inOnTop !== false;
     if (fr.out !== null) add(i, fr.out ?? undefined, top ? 3 : 4, {tout: ph});
-    if (fr.in) add(i + 1, fr.in, top ? 4 : 3, {tin: ph});
+    if (fr.in) add(i + 1 < shots.length ? i + 1 : trOut.kind === 'whip' ? i : -1, fr.in, top ? 4 : 3, {tin: ph}, i + 1 < shots.length ? String(i + 1) : `${i}w`);
     if (fr.group) groups.push(fr.group);
     if (fr.overlay) overlays.push(<React.Fragment key="oo">{fr.overlay}</React.Fragment>);
     active = true;
@@ -421,7 +428,7 @@ export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => 
     const info: ShotInfo = {index: l.idx, name: s.name, from: s.from, to: s.to, dur, t, tin: l.tin, tout: l.tout};
     let node: React.ReactNode = s.render(lt, lt / Math.max(1, dur), info);
     for (const fx of l.fxs) node = <FxWrap fx={fx}>{node}</FxWrap>;
-    return <div key={l.idx} style={full}>{node}</div>;
+    return <div key={l.key} style={full}>{node}</div>;
   });
   for (const g of groups) body = <FxWrap fx={g}>{body}</FxWrap>;
 
@@ -437,6 +444,12 @@ export const Shots: React.FC<ShotsProps> = ({shots, t: tProp, debug, style}) => 
     </AbsoluteFill>
   );
 };
+
+/** Build shots on the beat grid: each entry starts at global beat `beat` (cut frame = B(beat) − from); the last shot
+ *  ends at `end` (local frame, usually the scene's `dur`). `in` = transition INTO that shot.
+ *  beatShots(from, dur, [{beat: 32, render: A}, {beat: 34, render: B, in: whip()}, {beat: 35.5, render: C, in: flashCut()}]) */
+export const beatShots = (from: number, end: number, list: {beat: number; render: Shot['render']; in?: Transition; out?: Transition; name?: string}[]): Shot[] =>
+  list.map((x, i) => ({from: B(x.beat) - from, to: i < list.length - 1 ? B(list[i + 1].beat) - from : end, render: x.render, in: x.in, out: x.out, name: x.name}));
 
 /** Build shots from cut frames: cuts[i] = start of shot i, `end` = end of the last shot. trans[i] = transition INTO shot i. */
 export const shotsFromCuts = (cuts: number[], end: number, renders: Shot['render'][], trans: (Transition | undefined)[] = [], names: string[] = []): Shot[] =>
