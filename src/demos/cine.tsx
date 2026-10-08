@@ -2,17 +2,16 @@
 // speed ramp, rack focus, motion blur and echo trail. Preview:
 //   node tools/preview.mjs demo:cine --from 860 --dur 900 --range 860-1760:9
 import React from 'react';
-import {AbsoluteFill, Img, useCurrentFrame} from 'remotion';
+import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {FONT, DISPLAY, MONO, kick, band} from '../lib';
 import type {SceneProps} from '../cine/types';
 import {
   World, Obj, CamSpec, CamKey, addCam, handheld, drift, kickPush, kickShake, kickZoom, camPath, camMotion, moves, heroAngle,
   heroRamp, rackFocus, depthOf, resolveCam, MotionBlur, Echo, Shots, Shot, whip, zoomThrough, flashCut, glitchCut, lightLeakDissolve,
-  irisShockwave, spinBlur, cut, FloorGrid, ZoomBlur, SpinBlur, GlitchFx, beatsToLocal, strobe, onBeat, p01, mix, project, V3,
+  irisShockwave, spinBlur, cut, FloorGrid, beatsToLocal, strobe, onBeat, p01, mix, project, V3,
 } from '../cine';
 
 /* ------------------------------------------------------------------ */
-const PROFILE: string = "bench";
 /* Set pieces                                                           */
 /* ------------------------------------------------------------------ */
 const Glass: React.FC<{w: number; h: number; tone?: 'holo' | 'frost'; title?: string; seed?: number; glow?: number; children?: React.ReactNode}> = ({w, h, tone = 'holo', title, seed = 1, glow = 0.5, children}) => {
@@ -22,7 +21,7 @@ const Glass: React.FC<{w: number; h: number; tone?: 'holo' | 'frost'; title?: st
       width: w, height: h, borderRadius: 26, position: 'relative', boxSizing: 'border-box', padding: 26,
       background: holo ? 'linear-gradient(155deg, rgba(58,36,104,0.62) 0%, rgba(22,12,44,0.5) 55%, rgba(30,60,90,0.35) 100%)' : 'linear-gradient(155deg, rgba(246,242,253,0.78) 0%, rgba(228,219,247,0.6) 60%, rgba(214,200,245,0.5) 100%)',
       border: `1.5px solid ${holo ? 'rgba(200,180,255,0.55)' : 'rgba(255,255,255,0.9)'}`,
-      boxShadow: PROFILE === 'noshadow' ? undefined : `inset 0 1px 0 rgba(255,255,255,${holo ? 0.45 : 0.9}), inset 0 0 40px rgba(140,107,234,${holo ? 0.25 : 0.12}), 0 0 ${40 + 60 * glow}px rgba(140,107,234,${0.25 + 0.3 * glow})`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,${holo ? 0.45 : 0.9}), inset 0 0 40px rgba(140,107,234,${holo ? 0.25 : 0.12}), 0 0 ${40 + 60 * glow}px rgba(140,107,234,${0.25 + 0.3 * glow})`,
       fontFamily: FONT, color: holo ? '#EDE6FF' : '#39294B', overflow: 'hidden',
     }}>
       <div style={{position: 'absolute', inset: 0, borderRadius: 26, background: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 18%)'}} />
@@ -55,6 +54,7 @@ const Backdrop: React.FC = () => (
   </AbsoluteFill>
 );
 
+const FLOOR = 640;
 /** World positions of key set pieces (used for focus/targets). */
 const P = {
   hero: [0, -40, 0] as V3,
@@ -115,7 +115,7 @@ const Set: React.FC<{f: number; explode?: number}> = ({f, explode = 1}) => (
 /** Frame the set through a camera, with optional DOF and velocity-driven motion blur. */
 const Cam: React.FC<{cam: CamSpec; f: number; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; explode?: number}> = ({cam, f, focus, aperture = 0, mb, explode}) => {
   const world = (
-    <World camera={cam} focus={focus} aperture={aperture} backdrop={<><Backdrop />{PROFILE !== 'nogrid' ? <FloorGrid y={460} /> : null}</>}>
+    <World camera={cam} focus={focus} aperture={aperture} backdrop={<><Backdrop /><FloorGrid y={FLOOR} /></>}>
       <Set f={f} explode={explode} />
     </World>
   );
@@ -129,77 +129,6 @@ const Label: React.FC<{text: string; sub?: string}> = ({text, sub}) => (
   </div>
 );
 
-
-const uri = (x: string) => `data:image/svg+xml;utf8,${encodeURIComponent(x)}`;
-const canvasPng = (w: number, h: number, fn: (x: number, y: number) => number) => {
-  if (typeof document === 'undefined') return '';
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const ctx = c.getContext('2d')!;
-  const im = ctx.createImageData(w, h);
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const v = Math.max(0, Math.min(1, fn((x + 0.5) / w, (y + 0.5) / h)));
-    const i = (y * w + x) * 4;
-    im.data[i] = 255; im.data[i + 1] = 255; im.data[i + 2] = 255; im.data[i + 3] = Math.round(v * 255);
-  }
-  ctx.putImageData(im, 0, 0);
-  return c.toDataURL('image/png');
-};
-const sector = (lr: boolean) => canvasPng(240, 135, (u, v) => {
-  const dx = (u - 0.5) * 16, dy = (v - 0.5) * 9;
-  const r = Math.hypot(dx / 8, dy / 4.5);
-  const th = Math.atan2(dy, dx);
-  const horiz = Math.cos(th) ** 2;
-  const rad = Math.min(1, Math.max(0, (r - 0.12) / 0.6));
-  return (lr ? horiz : 1 - horiz) * rad * rad * (3 - 2 * rad);
-});
-const MLR = sector(true), MTB = sector(false);
-const BANDS = uri('<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect y="100" width="1920" height="40" fill="#fff"/><rect y="400" width="1920" height="90" fill="#fff"/><rect y="700" width="1920" height="20" fill="#fff"/><rect y="820" width="1920" height="60" fill="#fff"/></svg>');
-const BANDS2 = uri('<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080"><rect y="200" width="1920" height="70" fill="#fff"/><rect y="560" width="1920" height="30" fill="#fff"/><rect y="960" width="1920" height="50" fill="#fff"/></svg>');
-const Bench: React.FC<{t: number; f: number}> = ({t, f}) => {
-  const cam: CamSpec = {target: P.hero, yaw: -20, pitch: 6, dist: 1900, roll: -3, focal: 28};
-  const w = <Cam cam={cam} f={f} />;
-  const i = t % 8;
-  const R = {x: 0, y: 0, width: 1920, height: 1080, filterUnits: 'userSpaceOnUse' as const, colorInterpolationFilters: 'sRGB' as const};
-  const radial = (id: string, zoom: boolean, S: number) => (
-    <filter id={id} {...R}>
-      <feGaussianBlur in="SourceGraphic" stdDeviation={`${S} 0`} edgeMode="duplicate" result="h" />
-      <feGaussianBlur in="SourceGraphic" stdDeviation={`0 ${S}`} edgeMode="duplicate" result="v" />
-      <feImage href={MLR} x={0} y={0} width={1920} height={1080} preserveAspectRatio="none" result="mlr" />
-      <feImage href={MTB} x={0} y={0} width={1920} height={1080} preserveAspectRatio="none" result="mtb" />
-      <feComposite in="h" in2={zoom ? 'mlr' : 'mtb'} operator="in" result="a" />
-      <feComposite in="v" in2={zoom ? 'mtb' : 'mlr'} operator="in" result="b" />
-      <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="a" /><feMergeNode in="b" /></feMerge>
-    </filter>
-  );
-  const defs = (
-    <svg width={0} height={0} style={{position: 'absolute'}}><defs>
-      {radial('z', true, 40)}
-      <filter id="h1" {...R}><feGaussianBlur in="SourceGraphic" stdDeviation="40 0" edgeMode="duplicate" /></filter>
-      <filter id="zl" {...R}>
-        <feGaussianBlur in="SourceGraphic" stdDeviation="40 0" edgeMode="duplicate" result="h" />
-        <feImage href={MLR} x={0} y={0} width={1920} height={1080} preserveAspectRatio="none" result="mlr" />
-        <feComposite in="h" in2="mlr" operator="in" result="a" />
-        <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="a" /></feMerge>
-      </filter>
-      <filter id="sl" {...R}>
-        <feImage href={BANDS} x={0} y={0} width={1920} height={1080} preserveAspectRatio="none" result="m1" />
-        <feOffset in="SourceGraphic" dx={120} result="o1" />
-        <feComposite in="o1" in2="m1" operator="in" result="s1" />
-        <feMerge><feMergeNode in="SourceGraphic" /><feMergeNode in="s1" /></feMerge>
-      </filter>
-      <filter id="rgb" {...R}>
-        <feOffset in="SourceGraphic" dx={14} result="sr" />
-        <feColorMatrix in="sr" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="rr" />
-        <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0" result="gb" />
-        <feComposite in="rr" in2="gb" operator="arithmetic" k2={1} k3={1} />
-      </filter>
-    </defs></svg>
-  );
-  const fl = (id: string) => <div style={{position: 'absolute', inset: 0, filter: `url(#${id})`}}>{w}</div>;
-  const fx: Record<number, React.ReactNode> = {0: w, 1: fl('h1'), 2: fl('zl'), 3: fl('z'), 4: fl('sl'), 5: fl('rgb'), 6: <div style={{position: 'absolute', inset: 0, filter: 'blur(10px)'}}>{w}</div>, 7: <div style={{position: 'absolute', inset: 0, filter: 'blur(24px)'}}>{w}</div>};
-  return <AbsoluteFill>{defs}<Img src={MLR} style={{position: 'absolute', width: 2, height: 2, opacity: 0}} /><Img src={MTB} style={{position: 'absolute', width: 2, height: 2, opacity: 0}} />{fx[i]}<div style={{position: 'absolute', left: 30, top: 30, color: '#fff', fontSize: 40, fontFamily: 'Inter'}}>bench {i}</div></AbsoluteFill>;
-};
 /* ------------------------------------------------------------------ */
 /* Scene                                                                */
 /* ------------------------------------------------------------------ */
@@ -210,7 +139,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
 
   // 1. ORBIT + CRANE + DUTCH: one flowing Catmull-Rom path through 4 keys.
   const s1: CamKey[] = [
-    {at: 0, target: P.hero, yaw: -48, pitch: 14, dist: 2300, roll: -8, focal: 28},
+    {at: 0, target: P.hero, yaw: -48, pitch: 12, dist: 2300, roll: -8, focal: 28},
     {at: L(33.5) - L(32), yaw: -20, pitch: 6, dist: 1900, roll: -3},
     {at: L(35) - L(32), yaw: 12, pitch: -16, dist: 1700, roll: 4},
     {at: L(36) - L(32) + 10, ease: 'quintOut', yaw: 30, pitch: -34, dist: 1550, roll: 9, target: [0, -120, -100]},
@@ -226,7 +155,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 220, ease: 'expoIn', yaw: 70, dist: 1100, pitch: 4},
   ];
   // 4. RACK FOCUS near → far (macro: long lens, shallow)
-  const cam4: CamSpec = {pos: [-120, -90, 1500], lookAt: [180, -90, -150], focal: 60};
+  const cam4: CamSpec = {pos: [-100, -80, 1900], lookAt: [80, -80, 0], focal: 40};
   // 5. FLY-THROUGH exploded layers
   const s5 = moves.pushThrough({at: 0, dur: L(46) - L(44) + 14, target: [0, -40, -300], yaw: 8, pitch: 2, from: 1900, to: -900, ease: 'cubicIn', roll: -3, focal: 24});
   // 6. TOP-DOWN → HERO TILT
@@ -239,17 +168,16 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   ];
   // 8. ORBIT (fast) for spin transition
   const s8 = moves.orbit({at: 0, dur: L(54) - L(52), target: P.hero, yawFrom: 40, yawTo: -40, pitch: 8, dist: 1700, ease: 'sine', focal: 30});
-  // 10. IN-CAMERA WHIP PAN with echo trail + velocity motion blur
+  // 10. IN-CAMERA WHIP PAN: free camera beside the set whips left from the hero cluster to the signal wall
   const s10: CamKey[] = [
-    {at: 0, target: P.hero, yaw: -20, pitch: 6, dist: 1800, focal: 30, pan: 0},
-    {at: L(57) - L(56), pan: 0},
-    ...moves.whipPan({at: L(57) - L(56), dur: 10, by: 62, fromPan: 0}),
-    {at: L(59) - L(56), yaw: -10, pan: 62},
+    {at: 0, pos: [-1500, -150, 600], yaw: 64, pitch: 2, focal: 26, pan: 0},
+    {at: L(57) - L(56), pos: [-1460, -150, 560]},
+    ...moves.whipPan({at: L(57) - L(56), dur: 10, by: -62}),
+    {at: L(60) - L(56), pos: [-1380, -150, 420]},
   ];
   // 11. DOLLY ZOOM finale on title
-  const s11 = moves.dollyZoom({at: 0, dur: L(65.5) - L(60), target: [0, -400, -1900], yaw: 0, pitch: 4, from: 20, to: 70, framing: 0.55, ease: 'quintInOut'});
+  const s11 = moves.dollyZoom({at: 0, dur: L(65.5) - L(60), target: P.hero, yaw: -6, pitch: 3, from: 18, to: 55, framing: 0.7, ease: 'quintInOut'});
 
-  const live = (lt: number, seed = 1) => addCam({}, handheld(lt, 0.8, seed), kickPush(lt + 0, 0), kickShake(f, 0.7));
 
   const shots: Shot[] = [
     {
@@ -310,13 +238,17 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       render: (lt) => {
         const at = (x: number) => camPath(x, s10);
         const m = camMotion(at, lt);
-        const fast = m.speed > 40;
+        // HUD reticle locked onto the hero panel via project(); Echo gives it a ghost trail during the whip
+        const reticle = (x: number) => {
+          const p = project(at(x), P.hero);
+          if (!p.visible) return null;
+          return <div style={{position: 'absolute', left: p.x - 120, top: p.y - 80, width: 240, height: 160, border: '2px solid #7FE7FF', borderRadius: 8, boxShadow: '0 0 20px rgba(127,231,255,0.7)'}} />;
+        };
         return (
           <>
-            {fast
-              ? <MotionBlur vx={m.dx} vy={m.dy}><Echo t={lt} n={3} span={2} render={(x) => <Cam cam={at(x)} f={f} />} /></MotionBlur>
-              : <Cam cam={addCam(at(lt), handheld(lt, 0.6))} f={f} mb={{vx: m.dx, vy: m.dy}} />}
-            <Label text="In-camera whip pan" sub={`moves.whipPan · camMotion ${m.speed.toFixed(0)} px/f · Echo`} />
+            <Cam cam={addCam(at(lt), handheld(lt, 0.6))} f={f} mb={{vx: m.dx, vy: m.dy}} />
+            <Echo t={lt} n={3} span={3} render={reticle} />
+            <Label text="In-camera whip pan" sub={`moves.whipPan · camMotion ${m.speed.toFixed(0)} px/f · Echo reticle`} />
           </>
         );
       },
@@ -327,7 +259,6 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
   ];
 
-  if (PROFILE === 'bench') return <Bench t={t} f={f} />;
   const ob = onBeat(t, from);
   return (
     <AbsoluteFill style={{background: '#04020A'}}>

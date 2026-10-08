@@ -115,7 +115,7 @@ const ShotC: React.FC<{t: number}> = ({t}) => {
   return (
     <AbsoluteFill>
       <Space t={t + 600} />
-      <Stage cam={cam} persp={1500}>
+      <Stage cam={cam} persp={1500} crisp>
         <div style={{position: 'absolute', left: 960 - 459, top: 620 - 255, transformStyle: 'preserve-3d'}}>
           <SignalBars3D layout="field" f={t + AUDIO + 380} t={t} reveal={0} tilt={64} highlight={22} />
         </div>

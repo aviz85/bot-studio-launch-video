@@ -10,7 +10,7 @@ import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {FRAME_H, FRAME_W} from './camera';
 import {EASES, clamp01, mix, smoothstep} from './math';
-import {GlitchFx, MotionBlur, SpinBlur, ZoomBlur, shutterBlur} from './blur';
+import {GlitchFx, MotionBlur, SpinBlur, ZoomBlur, shutterBlur, spinBlurPx, zoomBlurPx} from './blur';
 import {rand} from '../lib';
 
 /* ------------------------------------------------------------------ */
@@ -61,7 +61,9 @@ type Fx = {
   style?: React.CSSProperties;
   /** directional blur std px */
   sx?: number; sy?: number;
+  /** zoom blur px (edge) */
   zoom?: number;
+  /** spin blur px (edge) */
   spin?: number;
   glitch?: {amount: number; seed: number};
 };
@@ -163,19 +165,21 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
     }
     case 'zoomThrough': {
       const I = Math.exp(-Math.abs(d) / 2.6);
+      const outSc = (dd: number) => 1 + (tr.depth - 1) * E.expoIn(clamp01((dd + pre) / pre));
+      const inSc = (dd: number) => (dd < 0 ? mix(0.6, 0.9, smoothstep(0.3, 1, clamp01((dd + pre) / pre))) : mix(0.9, 1, E.expoOut(clamp01(dd / post))));
       if (before) {
-        const sc = 1 + (tr.depth - 1) * E.expoIn(u);
-        const showIn = u > 0.3;
-        const inSc = mix(0.6, 0.9, smoothstep(0.3, 1, u));
+        const sc = outSc(d);
+        const rate = outSc(d + 0.5) / outSc(d - 0.5) - 1;
         return {
-          out: {style: {transform: `scale(${sc.toFixed(4)})`, opacity: 1 - smoothstep(0.5, 1, u)}, zoom: 0.35 * smoothstep(0.15, 1, u)},
-          in: showIn ? {style: {transform: `scale(${inSc.toFixed(4)})`}, zoom: 0.38 * smoothstep(0.3, 1, u)} : null,
+          out: {style: {transform: `scale(${sc.toFixed(4)})`, opacity: 1 - smoothstep(0.5, 1, u)}},
+          in: u > 0.3 ? {style: {transform: `scale(${inSc(d).toFixed(4)})`}} : null,
           inOnTop: false,
+          group: {zoom: Math.min(90, zoomBlurPx(rate) + 40 * smoothstep(0.4, 1, u))},
           overlay: <ZoomOverlay I={I} color={tr.color} />,
         };
       }
-      const sc = mix(0.9, 1, E.expoOut(v));
-      return {in: {style: {transform: `scale(${sc.toFixed(4)})`}, zoom: 0.38 * (1 - E.expoOut(v))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
+      const rate = inSc(d + 0.5) / inSc(d - 0.5) - 1;
+      return {in: {style: {transform: `scale(${inSc(d).toFixed(4)})`}}, group: {zoom: Math.min(90, zoomBlurPx(rate) + 36 * (1 - E.expoOut(v)))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
     }
     case 'flashCut': {
       const fl = before ? tr.peak * Math.pow(u, 2.2) : tr.peak * Math.pow(1 - v, 2.4);
@@ -190,16 +194,10 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
       const jx = (rand(seed * 1.3) - 0.5) * 40 * g;
       const bandsOther = (before ? u > 0.45 : v < 0.35) ? slicePath(seed, 3 + Math.floor(rand(seed) * 4)) : null;
       const overlay = g > 0.02 ? <GlitchOverlay g={g} seed={seed} /> : null;
-      if (before) return {
-        out: {style: {transform: `translateX(${jx.toFixed(1)}px)`}, glitch: {amount: g, seed}},
-        in: bandsOther ? {style: {clipPath: `path('${bandsOther}')`, transform: `translateX(${(-jx * 1.5).toFixed(1)}px)`}, glitch: {amount: g * 0.8, seed: seed + 5}} : null,
-        overlay,
-      };
-      return {
-        in: {style: {transform: `translateX(${jx.toFixed(1)}px)`}, glitch: {amount: g, seed}},
-        out: bandsOther ? {style: {clipPath: `path('${bandsOther}')`, transform: `translateX(${(-jx * 1.5).toFixed(1)}px)`}, glitch: {amount: g * 0.8, seed: seed + 5}} : null,
-        overlay,
-      };
+      const main: Fx = {style: {transform: `translateX(${jx.toFixed(1)}px)`}};
+      const other: Fx | null = bandsOther ? {style: {clipPath: `path('${bandsOther}')`, transform: `translateX(${(-jx * 1.5).toFixed(1)}px)`}} : null;
+      const group: Fx = {glitch: {amount: g, seed}};
+      return before ? {out: main, in: other, group, overlay} : {in: main, out: other, group, overlay};
     }
     case 'lightLeakDissolve': {
       const L = tr.strength * Math.exp(-Math.pow(d / ((pre + post) * 0.32), 2));
@@ -229,7 +227,7 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
       const thAt = (dd: number) => (dd < 0 ? tr.dir * A * E.expoIn(clamp01((dd + pre) / pre)) : -tr.dir * A * (1 - E.expoOut(clamp01(dd / post))));
       const w = Math.abs(thAt(d + 0.5) - thAt(d - 0.5)) % 180; // deg/frame
       const sc = coverScale(th) * (1 + 0.12 * Math.exp(-Math.abs(d) / 3));
-      const fx: Fx = {style: {transform: `rotate(${th.toFixed(3)}deg) scale(${sc.toFixed(4)})`}, spin: Math.min(14, w * 0.5)};
+      const fx: Fx = {style: {transform: `rotate(${th.toFixed(3)}deg) scale(${sc.toFixed(4)})`}, spin: Math.min(90, spinBlurPx(w))};
       const I = Math.exp(-Math.abs(d) / 2.5);
       const overlay = I > 0.03 ? <AbsoluteFill style={{background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,${(0.5 * I).toFixed(3)}) 0%, rgba(191,244,255,${(0.18 * I).toFixed(3)}) 30%, transparent 65%)`, mixBlendMode: 'screen'}} /> : null;
       return before ? {out: fx, overlay} : {in: fx, overlay};
@@ -344,8 +342,8 @@ const FxWrap: React.FC<{fx?: Fx | null; children: React.ReactNode}> = ({fx, chil
   if (!fx) return <div style={full}>{children}</div>;
   let node: React.ReactNode = children;
   if (fx.glitch && fx.glitch.amount > 0.01) node = <GlitchFx amount={fx.glitch.amount} seed={fx.glitch.seed}>{node}</GlitchFx>;
-  if (fx.spin && fx.spin > 0.15) node = <SpinBlur angle={fx.spin}>{node}</SpinBlur>;
-  if (fx.zoom && fx.zoom > 0.004) node = <ZoomBlur amount={fx.zoom}>{node}</ZoomBlur>;
+  if (fx.spin && fx.spin > 0.6) node = <SpinBlur px={fx.spin}>{node}</SpinBlur>;
+  if (fx.zoom && fx.zoom > 0.6) node = <ZoomBlur px={fx.zoom}>{node}</ZoomBlur>;
   if ((fx.sx ?? 0) > 0.6 || (fx.sy ?? 0) > 0.6) node = <MotionBlur sx={fx.sx} sy={fx.sy}>{node}</MotionBlur>;
   return <div style={{...full, ...fx.style}}>{node}</div>;
 };

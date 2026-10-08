@@ -276,9 +276,9 @@ const ChipBody: React.FC<React.ComponentProps<typeof TypedChip>> = ({name, value
 };
 
 /* =====================================================================
- * Reflect — wrap any flat node with a floor reflection (box-reflect)
+ * FloorReflect — wrap any flat node with a floor reflection (box-reflect)
  * ===================================================================== */
-export const Reflect: React.FC<{gap?: number; opacity?: number; fade?: number; children: React.ReactNode; style?: React.CSSProperties}> = ({gap = 12, opacity = 0.3, fade = 0.45, children, style}) => (
+export const FloorReflect: React.FC<{gap?: number; opacity?: number; fade?: number; children: React.ReactNode; style?: React.CSSProperties}> = ({gap = 12, opacity = 0.3, fade = 0.45, children, style}) => (
   <div style={{display: 'inline-block', WebkitBoxReflect: `below ${gap}px linear-gradient(to bottom, transparent 0%, transparent ${Math.round((1 - fade) * 100)}%, rgba(255,255,255,${opacity}) 100%)`, ...style} as React.CSSProperties}>{children}</div>
 );
 

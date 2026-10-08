@@ -233,3 +233,34 @@ export const starSprite = (color: string) => {
   spriteCache.set(key, c);
   return c;
 };
+
+/** Shared scratch canvas (synchronous use only: draw into it, blit it, done). */
+const scratchMap = new Map<string, HTMLCanvasElement>();
+export const scratchCanvas = (key: string, w: number, h: number) => {
+  let c = scratchMap.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    scratchMap.set(key, c);
+  }
+  if (c.width !== w || c.height !== h) {
+    c.width = w;
+    c.height = h;
+  }
+  const ctx = c.getContext('2d')!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, w, h);
+  return {c, ctx};
+};
+/** Fill a radial gradient (optionally elliptical: sy = vertical squash) given [offset, rgba] stops. */
+export const radialFill = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, stops: [number, string][], sy = 1, sx = 1) => {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(sx, sy);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  for (const [o, c] of stops) g.addColorStop(Math.max(0, Math.min(1, o)), c);
+  ctx.fillStyle = g;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+};

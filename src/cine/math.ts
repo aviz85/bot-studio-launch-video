@@ -118,16 +118,25 @@ export const m4css = (m: M4) => `matrix3d(${m.map((v) => (Math.abs(v) < 1e-9 ? 0
 /* Keyframed numeric tracks (Hermite / Catmull-Rom, per-segment ease)   */
 /* ------------------------------------------------------------------ */
 export type TrackOpts = {
-  /** 0 = Catmull-Rom flow through keys (default); 1 = stop at every key. */
+  /** 0 = flowing spline through keys (default); 1 = stop at every key. */
   tension?: number;
-  /** Tangent at the first/last key: 'free' (continue the slope, default) or 'rest' (start/end at rest). */
+  /** Tangent at the first/last key when that segment is linear: 'free' (keep the slope, default) or 'rest'. */
   ends?: 'free' | 'rest';
   /** false = plain piecewise interpolation (no spline), each segment shaped only by its ease. */
   spline?: boolean;
+  /** true = raw Catmull-Rom (may overshoot keys); default false = monotone (no overshoot past key values). */
+  overshoot?: boolean;
 };
 
+const isLinear = (e: (u: number) => number) => e === EASES.linear;
+const dEase0 = (e: (u: number) => number) => (e(1e-3) - e(0)) / 1e-3;
+const dEase1 = (e: (u: number) => number) => (e(1) - e(1 - 1e-3)) / 1e-3;
+
 /** Evaluate a set of numeric channels at time t.
- *  times[i] = key frame; vals[i][c] = value of channel c at key i; eases[i] = ease of the segment ARRIVING at key i. */
+ *  times[i] = key frame; vals[i][c] = value of channel c at key i; eases[i] = ease of the segment ARRIVING at key i.
+ *  Eased segments interpolate exactly with their ease (a "move"); LINEAR segments flow through a cubic Hermite
+ *  spline whose key tangents are Catmull-Rom (monotone-limited) and inherit the end velocity of eased neighbours,
+ *  so moves chain together without velocity jumps or overshoot. */
 export const hermiteEval = (t: number, times: number[], vals: number[][], eases: ((u: number) => number)[], o: TrackOpts = {}): number[] => {
   const n = times.length;
   if (n === 0) return [];
@@ -137,24 +146,42 @@ export const hermiteEval = (t: number, times: number[], vals: number[][], eases:
   while (i < n - 2 && t >= times[i + 1]) i++;
   const t0 = times[i], t1 = times[i + 1];
   const h = Math.max(1e-6, t1 - t0);
-  const u = ease(eases[i + 1])((t - t0) / h);
+  const segE = eases[i + 1] ?? EASES.linear;
+  const uRaw = Math.min(1, Math.max(0, (t - t0) / h));
   const nc = vals[0].length;
   const out = new Array(nc);
+  if (o.spline === false || !isLinear(segE)) {
+    const u = segE(uRaw);
+    for (let c = 0; c < nc; c++) out[c] = vals[i][c] + (vals[i + 1][c] - vals[i][c]) * u;
+    return out;
+  }
   const tension = o.tension ?? 0;
-  const spline = o.spline !== false;
+  const segSlope = (j: number, c: number) => (vals[j + 1][c] - vals[j][c]) / Math.max(1e-6, times[j + 1] - times[j]); // segment j→j+1
+  // velocity at key j coming from segment k (k = j-1 arriving, k = j departing)
+  const tangent = (j: number, c: number) => {
+    const hasL = j > 0, hasR = j < n - 1;
+    const eL = hasL ? eases[j] ?? EASES.linear : null;
+    const eR = hasR ? eases[j + 1] ?? EASES.linear : null;
+    const vL = hasL ? segSlope(j - 1, c) * (isLinear(eL!) ? 1 : dEase1(eL!)) : null;
+    const vR = hasR ? segSlope(j, c) * (isLinear(eR!) ? 1 : dEase0(eR!)) : null;
+    if (vL === null) return o.ends === 'rest' ? 0 : vR!;
+    if (vR === null) return o.ends === 'rest' ? 0 : vL;
+    if (!isLinear(eL!)) return vL; // continue out of an eased move
+    if (!isLinear(eR!)) return vR; // lead into an eased move
+    let m = 0.5 * (vL + vR);
+    if (!o.overshoot) {
+      if (vL * vR <= 0) m = 0;
+      else {
+        const lim = 3 * Math.min(Math.abs(vL), Math.abs(vR));
+        if (Math.abs(m) > lim) m = Math.sign(m) * lim;
+      }
+    }
+    return (1 - tension) * m;
+  };
+  const u = uRaw, u2 = u * u, u3 = u2 * u;
   for (let c = 0; c < nc; c++) {
     const p0 = vals[i][c], p1 = vals[i + 1][c];
-    if (!spline) { out[c] = p0 + (p1 - p0) * u; continue; }
-    const slope = (j: number) => {
-      // tangent (value per frame) at key j
-      if (j === 0) return o.ends === 'rest' ? 0 : (vals[1][c] - vals[0][c]) / Math.max(1e-6, times[1] - times[0]);
-      if (j === n - 1) return o.ends === 'rest' ? 0 : (vals[n - 1][c] - vals[n - 2][c]) / Math.max(1e-6, times[n - 1] - times[n - 2]);
-      const a = (vals[j][c] - vals[j - 1][c]) / Math.max(1e-6, times[j] - times[j - 1]);
-      const b = (vals[j + 1][c] - vals[j][c]) / Math.max(1e-6, times[j + 1] - times[j]);
-      return (1 - tension) * 0.5 * (a + b);
-    };
-    const m0 = slope(i) * h, m1 = slope(i + 1) * h;
-    const u2 = u * u, u3 = u2 * u;
+    const m0 = tangent(i, c) * h, m1 = tangent(i + 1, c) * h;
     out[c] = (2 * u3 - 3 * u2 + 1) * p0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * p1 + (u3 - u2) * m1;
   }
   return out;

@@ -9,14 +9,9 @@ const Panel: React.FC = () => (
   </div>
 );
 const T: Record<number, React.FC<{f: number}>> = {
-  0: () => null,
-  1: ({f}) => <X.SpaceBackdrop frame={f} />,
-  2: ({f}) => <X.GodRays x={960} y={440} frame={f} />,
-  3: ({f}) => <X.LensFlare x={500 + f} y={300} frame={f} />,
-  4: ({f}) => <X.Glitch amount={1} frame={f}><Panel /></X.Glitch>,
-  5: ({f}) => <X.ChromaticAberration amount={8}><Panel /></X.ChromaticAberration>,
-  6: ({f}) => <X.Bloom intensity={0.8}><Panel /></X.Bloom>,
-  7: ({f}) => <X.VolumetricBeams beams={[{x: 500, y: -80, angle: 72, sweep: 5}, {x: 1400, y: -80, angle: 110, sweep: 5}]} frame={f} />,
+  0: ({f}) => <><X.SpaceBackdrop frame={f} /><X.HoloGrid frame={f} /></>,
+  1: ({f}) => <><X.SpaceBackdrop frame={f} haze={0} /><X.GodRays x={960} y={440} frame={f} /></>,
+  2: ({f}) => <><X.SpaceBackdrop frame={f} palette="mixed" /><X.LensFlare x={500 + f} y={300} frame={f} /></>,
 };
 export const Scene: React.FC<SceneProps> = () => {
   const f = useCurrentFrame();

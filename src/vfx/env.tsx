@@ -1,7 +1,7 @@
 /* Environments: deep space backdrop, holographic grid floor, grid tunnel, scanlines, data rain. */
-import React, {useLayoutEffect, useRef} from 'react';
+import React from 'react';
 import {band, kick} from '../lib';
-import {CX, CY, H, VC, W, clamp01, colorOf, full, glowSprite, hash2, mix, mixHex, noise2, prng, rgba, starSprite, useCanvasDraw, useF} from './util';
+import {CX, CY, H, VC, W, clamp01, colorOf, full, glowSprite, hash2, mix, mixHex, noise2, prng, radialFill, rgba, scratchCanvas, starSprite, useCanvasDraw, useF} from './util';
 
 /* ======================================================================
  * Nebula texture (generated once per page, cached; domain-warped fbm)
@@ -81,21 +81,52 @@ export type SpaceBackdropProps = {
 };
 
 /** Deep violet space: gradient base, domain-warped nebula clouds, glow pools, twinkling stars, horizon haze,
- *  breathing with the music. Opaque — use as the bottom layer. */
+ *  breathing with the music. Opaque — use as the bottom layer. Single canvas (soft layers at half-res). */
 export const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({intensity = 1, palette = 'violet', stars = 240, haze = 0.6, horizon = 640, audio = 1, from = 0, camX = 0, camY = 0, seed = 3, frame}) => {
   const f = useF(frame);
   const gf = f + from;
   const lo = band(gf, 0, 4), k = kick(gf, 12);
   const breath = 1 + audio * (0.22 * lo + 0.18 * k);
-  const nebRef = useRef<HTMLCanvasElement>(null);
-  useLayoutEffect(() => {
-    const c = nebRef.current;
-    if (!c) return;
-    const ctx = c.getContext('2d')!;
-    ctx.clearRect(0, 0, c.width, c.height);
-    ctx.drawImage(nebulaTexture(seed, palette as NebulaPal), 0, 0);
-  }, [seed, palette]);
-  const starRef = useCanvasDraw((ctx) => {
+  const ref = useCanvasDraw((ctx) => {
+    // ---- soft layers at half resolution
+    const {c: S, ctx: s} = scratchCanvas('space', W / 2, H / 2);
+    s.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    radialFill(s, W / 2, H * 0.4, W * 0.75, [[0, '#140828'], [0.42, '#0B051B'], [1, VC.space0]], 0.85);
+    s.fillStyle = VC.space0;
+    s.globalCompositeOperation = 'destination-over';
+    s.fillRect(0, 0, W, H);
+    s.globalCompositeOperation = 'screen';
+    const gA = clamp01(intensity * (0.75 + 0.25 * breath));
+    const glows: [number, number, number, string, number][] = [
+      [0.26 + 0.05 * Math.sin(f / 300), 0.3 + 0.06 * Math.cos(f / 360), 650, VC.violetDeep, 0.3],
+      [0.78 + 0.04 * Math.cos(f / 340), 0.62 + 0.05 * Math.sin(f / 280), 700, '#7A2FB0', 0.2],
+      [0.6 + 0.06 * Math.sin(f / 420), 0.18, 450, '#2A36A8', 0.18],
+      [0.12, 0.8, 400, VC.cyan, 0.04],
+    ];
+    for (const [gx, gy, r, c, a] of glows) radialFill(s, gx * W + camX * 0.1, gy * H + camY * 0.1, r, [[0, rgba(c, a * gA)], [0.5, rgba(c, a * gA * 0.35)], [1, rgba(c, 0)]]);
+    const dx = Math.sin(f * 0.0021 + seed) * 40 + camX * 0.15;
+    const dy = Math.cos(f * 0.0017 + seed) * 22 + camY * 0.15;
+    const ns = 1.12 + 0.03 * Math.sin(f * 0.003) + 0.012 * k * audio;
+    s.globalAlpha = clamp01(0.62 * intensity * breath);
+    const nw = W * ns, nh = H * ns;
+    s.drawImage(nebulaTexture(seed, palette as NebulaPal), W / 2 - nw / 2 + dx, H / 2 - nh / 2 + dy, nw, nh);
+    s.globalAlpha = 1;
+    if (haze > 0) {
+      const hz = clamp01(haze * (0.8 + 0.2 * breath));
+      radialFill(s, W / 2, horizon, W * 0.62, [[0, rgba('#8C6BEA', 0.26 * hz)], [0.45, rgba('#6A45E0', 0.1 * hz)], [1, 'rgba(0,0,0,0)']], 0.2);
+    }
+    ctx.drawImage(S, 0, 0, W, H);
+    // ---- crisp layers at full resolution
+    if (haze > 0) {
+      const lg = ctx.createLinearGradient(0, 0, W, 0);
+      lg.addColorStop(0, 'rgba(0,0,0,0)');
+      lg.addColorStop(0.3, rgba(VC.lilac, 0.35 * haze * 0.5));
+      lg.addColorStop(0.5, rgba('#ffffff', 0.5 * haze * 0.5));
+      lg.addColorStop(0.7, rgba(VC.lilac, 0.35 * haze * 0.5));
+      lg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(0, horizon - 1.5, W, 3);
+    }
     const rnd = prng(seed + 501);
     ctx.globalCompositeOperation = 'lighter';
     const spr = glowSprite('#E8E4FF', 0.9);
@@ -103,6 +134,7 @@ export const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({intensity = 1, pale
       const x0 = rnd() * (W + 200) - 100, y0 = rnd() * (H + 200) - 100;
       const m = Math.pow(rnd(), 3.5), ph = rnd() * 50, tint = rnd();
       const px = x0 + camX * 0.05 * (0.5 + m), py = y0 + camY * 0.05 * (0.5 + m);
+      if (px < -20 || px > W + 20 || py < -20 || py > H + 20) continue;
       const tw = 0.55 + 0.45 * Math.sin(f * (0.03 + m * 0.05) + ph);
       const sz = 1.6 + m * 7;
       ctx.globalAlpha = clamp01((0.25 + 0.75 * m) * tw * (0.85 + 0.3 * k * audio));
@@ -110,34 +142,7 @@ export const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({intensity = 1, pale
       else ctx.drawImage(spr, px - sz, py - sz, sz * 2, sz * 2);
     }
   });
-  const dx = Math.sin(f * 0.0021 + seed) * 40 + camX * 0.15;
-  const dy = Math.cos(f * 0.0017 + seed) * 22 + camY * 0.15;
-  const ns = 1.12 + 0.03 * Math.sin(f * 0.003) + 0.012 * k * audio;
-  const glows = [
-    {x: 26 + 5 * Math.sin(f / 300), y: 30 + 6 * Math.cos(f / 360), r: 1300, c: rgba(VC.violetDeep, 0.3)},
-    {x: 78 + 4 * Math.cos(f / 340), y: 62 + 5 * Math.sin(f / 280), r: 1400, c: rgba('#7A2FB0', 0.2)},
-    {x: 60 + 6 * Math.sin(f / 420), y: 18, r: 900, c: rgba('#2A36A8', 0.18)},
-    {x: 12, y: 80, r: 800, c: rgba(VC.cyan, 0.04)},
-  ];
-  return (
-    <div style={{...full, overflow: 'hidden', background: `radial-gradient(130% 100% at 50% 40%, #140828 0%, #0B051B 42%, ${VC.space0} 100%)`}}>
-      {glows.map((g, i) => (
-        <div key={i} style={{position: 'absolute', left: `calc(${g.x}% - ${g.r / 2}px + ${camX * 0.1}px)`, top: `calc(${g.y}% - ${g.r / 2}px + ${camY * 0.1}px)`, width: g.r, height: g.r,
-          background: `radial-gradient(circle closest-side, ${g.c} 0%, transparent 100%)`, opacity: clamp01(intensity * (0.75 + 0.25 * breath)), mixBlendMode: 'screen'}} />
-      ))}
-      <canvas ref={nebRef} width={384} height={216}
-        style={{position: 'absolute', left: -W * 0.06, top: -H * 0.06, width: W * 1.12, height: H * 1.12, transform: `translate(${dx}px, ${dy}px) scale(${ns})`, opacity: clamp01(0.62 * intensity * breath), mixBlendMode: 'screen'}} />
-      <canvas ref={starRef} width={W} height={H} style={{...full}} />
-      {haze > 0 && (
-        <>
-          <div style={{position: 'absolute', left: -200, right: -200, top: horizon - 260, height: 520, opacity: clamp01(haze * (0.8 + 0.2 * breath)),
-            background: `radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba('#8C6BEA', 0.26)} 0%, ${rgba('#6A45E0', 0.1)} 45%, transparent 100%)`}} />
-          <div style={{position: 'absolute', left: 0, right: 0, top: horizon - 2, height: 4, opacity: clamp01(haze * 0.5),
-            background: `linear-gradient(90deg, transparent, ${rgba(VC.lilac, 0.35)} 30%, ${rgba('#fff', 0.5)} 50%, ${rgba(VC.lilac, 0.35)} 70%, transparent)`}} />
-        </>
-      )}
-    </div>
-  );
+  return <canvas ref={ref} width={W} height={H} style={{...full, background: VC.space0}} />;
 };
 
 /* ======================================================================

@@ -1,6 +1,6 @@
 /* Anamorphic lens flares, flare bursts and glints. Pure CSS gradients, screen-blended. */
 import React from 'react';
-import {CX, CY, VC, clamp01, colorOf, easeOutExpo, fbm1, full, hash, impulse, mixHex, rgba, useF} from './util';
+import {CX, CY, H, VC, W, clamp01, colorOf, easeOutExpo, fbm1, full, hash, impulse, mixHex, radialFill, rgba, scratchCanvas, useCanvasDraw, useF} from './util';
 
 type Blend = 'screen' | 'plus-lighter' | 'normal' | 'lighten';
 
@@ -16,42 +16,47 @@ const At: React.FC<{x: number; y: number; w: number; h: number; bg: string; rot?
     />
   );
 
-const hexClip = (() => {
-  const pts: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const a = (Math.PI / 3) * i + Math.PI / 6;
-    pts.push(`${(50 + 50 * Math.cos(a)).toFixed(2)}% ${(50 + 50 * Math.sin(a)).toFixed(2)}%`);
-  }
-  return `polygon(${pts.join(',')})`;
-})();
-const octClip = (() => {
-  const pts: string[] = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 4) * i + Math.PI / 8;
-    pts.push(`${(50 + 50 * Math.cos(a)).toFixed(2)}% ${(50 + 50 * Math.sin(a)).toFixed(2)}%`);
-  }
-  return `polygon(${pts.join(',')})`;
-})();
-
-/** Conic starburst gradient string (seeded irregular rays). */
-const rayGradient = (n: number, seed: number, color: string, a: number) => {
-  type R = {ang: number; w: number; al: number};
-  const rs: R[] = [];
+/** Seeded irregular starburst rays: [angleDeg, halfWidthDeg, alpha]. */
+const rayDefs = (n: number, seed: number) => {
+  const rs: [number, number, number][] = [];
   for (let i = 0; i < n; i++) {
     const ang = (360 / n) * i + (hash(seed * 97 + i) - 0.5) * (300 / n);
-    rs.push({ang: ((ang % 360) + 360) % 360, w: 0.35 + hash(seed * 31 + i * 7) * 1.1, al: 0.25 + 0.75 * Math.pow(hash(seed * 13 + i * 3), 1.5)});
+    rs.push([((ang % 360) + 360) % 360, 0.35 + hash(seed * 31 + i * 7) * 1.1, 0.25 + 0.75 * Math.pow(hash(seed * 13 + i * 3), 1.5)]);
   }
-  rs.sort((p, q) => p.ang - q.ang);
-  const stops: string[] = ['transparent 0deg'];
+  return rs.sort((p, q) => p[0] - q[0]);
+};
+/** Draw a masked conic starburst into ctx (via scratch canvas). */
+const drawRays = (ctx: CanvasRenderingContext2D, key: string, x: number, y: number, R: number, rot: number, n: number, seed: number, color: string, a: number, maskStops: [number, string][]) => {
+  const size = Math.ceil(R * 2);
+  if (size < 4 || a < 0.003) return;
+  const {c: S, ctx: s} = scratchCanvas(key, size, size);
+  const g = s.createConicGradient((rot * Math.PI) / 180, R, R);
+  g.addColorStop(0, 'rgba(0,0,0,0)');
   let last = 0;
-  for (const r of rs) {
-    const a0 = Math.max(last, r.ang - r.w), a1 = Math.min(359.9, r.ang + r.w);
-    if (a0 >= a1 || r.ang <= last) continue;
-    stops.push(`transparent ${a0.toFixed(2)}deg`, `${rgba(color, a * r.al)} ${r.ang.toFixed(2)}deg`, `transparent ${a1.toFixed(2)}deg`);
-    last = a1;
+  for (const [ang, w, al] of rayDefs(n, seed)) {
+    const a0 = Math.max(last, ang - w) / 360, a1 = Math.min(359.9, ang + w) / 360;
+    if (a0 >= a1 || ang / 360 <= last / 360) continue;
+    g.addColorStop(a0, 'rgba(0,0,0,0)');
+    g.addColorStop(ang / 360, rgba(color, Math.min(1, a * al)));
+    g.addColorStop(a1, 'rgba(0,0,0,0)');
+    last = a1 * 360;
   }
-  stops.push('transparent 360deg');
-  return `conic-gradient(from 0deg, ${stops.join(', ')})`;
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  s.fillStyle = g;
+  s.fillRect(0, 0, size, size);
+  s.globalCompositeOperation = 'destination-in';
+  radialFill(s, R, R, R, maskStops);
+  ctx.drawImage(S, x - R, y - R);
+};
+const polyPath = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number, sides: number, rot: number) => {
+  ctx.beginPath();
+  for (let i = 0; i < sides; i++) {
+    const a = rot + (Math.PI * 2 * i) / sides;
+    const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+    if (i) ctx.lineTo(px, py);
+    else ctx.moveTo(px, py);
+  }
+  ctx.closePath();
 };
 
 export type LensFlareProps = {
@@ -87,7 +92,7 @@ export type LensFlareProps = {
 };
 
 /** Anamorphic lens flare: hot core, long horizontal streaks, parallel violet streaks, starburst rays,
- *  iris ghosts mirrored through the optical centre and a rainbow ring ghost. Screen-blended. */
+ *  iris ghosts mirrored through the optical centre and a rainbow ring ghost. One canvas, additive inside, screen-blended. */
 export const LensFlare: React.FC<LensFlareProps> = ({
   x, y, intensity = 1, scale = 1, streak = 1, color, secondary, ghosts = 1, rays = 14, ring = true, veil = 0.6,
   center = [CX, CY], flicker = 0.4, seed = 1, frame, blend = 'screen', style,
@@ -96,89 +101,86 @@ export const LensFlare: React.FC<LensFlareProps> = ({
   const col = colorOf(color, VC.cyan);
   const sec = colorOf(secondary, VC.violet);
   const I = Math.max(0, intensity) * (1 + flicker * 0.1 * fbm1(f * 0.11, seed));
-  if (I < 0.005) return null;
-  const s = scale;
-  const L = 2600 * s * streak;
-  const hot = mixHex(col, '#ffffff', 0.65);
-  const k = (a: number) => Math.min(1, a * I);
-  const vx = x - center[0], vy = y - center[1];
-  const off = Math.min(1, Math.hypot(vx, vy) / 700);
-  const g = ghosts * (0.55 + 0.45 * off);
-  const rot = (f * 0.06 + seed * 37) % 360;
-
-  // ghosts: t (position on the axis: 1 = source, 0 = centre, negative = mirrored side), size, shape, colour, alpha
-  const ghostDefs: [number, number, 'hex' | 'oct' | 'disc' | 'ring', string, number][] = [
-    [0.55, 34, 'disc', VC.white, 0.16],
-    [0.22, 70, 'hex', sec, 0.13],
-    [-0.18, 46, 'disc', VC.pistachio, 0.12],
-    [-0.42, 150, 'ring', col, 0.1],
-    [-0.7, 96, 'oct', VC.magenta, 0.08],
-    [-0.95, 30, 'disc', col, 0.2],
-    [-1.25, 230, 'hex', sec, 0.06],
-    [-1.6, 120, 'disc', VC.amber, 0.05],
-  ];
-
-  return (
-    <div style={{...full, overflow: 'hidden', mixBlendMode: blend, ...style}}>
-      {/* horizontal haze band across the frame */}
-      {veil > 0 && (
-        <At x={x} y={y} w={Math.max(3840, L * 1.2)} h={520 * s} o={k(veil * 0.55)}
-          bg={`radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba(col, 0.22)} 0%, ${rgba(mixHex(col, sec, 0.5), 0.08)} 40%, transparent 100%)`} />
-      )}
-      {/* wide atmospheric glow */}
-      <At x={x} y={y} w={1500 * s} h={1500 * s} o={k(0.9)}
-        bg={`radial-gradient(circle closest-side, ${rgba(sec, 0.22)} 0%, ${rgba(sec, 0.09)} 30%, ${rgba(sec, 0.025)} 60%, transparent 100%)`} />
-      {/* medium glow */}
-      <At x={x} y={y} w={520 * s} h={520 * s} o={k(1)}
-        bg={`radial-gradient(circle closest-side, ${rgba(hot, 0.55)} 0%, ${rgba(col, 0.28)} 22%, ${rgba(col, 0.09)} 50%, transparent 100%)`} />
-      {/* starburst rays (two layers: long sparse + short dense) */}
-      {rays > 0 && (
-        <>
-          <At x={x} y={y} w={1100 * s} h={1100 * s} rot={rot} o={k(0.85)} bg={rayGradient(Math.max(4, Math.round(rays * 0.5)), seed, mixHex(col, '#ffffff', 0.5), 0.9)}
-            mask="radial-gradient(circle closest-side, black 0%, rgba(0,0,0,0.55) 12%, rgba(0,0,0,0.15) 40%, transparent 100%)" />
-          <At x={x} y={y} w={560 * s} h={560 * s} rot={-rot * 0.7 + 11} o={k(0.8)} bg={rayGradient(rays, seed + 5, hot, 0.85)}
-            mask="radial-gradient(circle closest-side, black 0%, rgba(0,0,0,0.5) 18%, transparent 100%)" />
-        </>
-      )}
-      {/* anamorphic streaks */}
-      <At x={x} y={y} w={L * 0.62} h={190 * s} o={k(0.55)}
-        bg={`radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba(mixHex(col, '#3A6BFF', 0.35), 0.28)} 0%, ${rgba(mixHex(col, '#3A6BFF', 0.5), 0.08)} 45%, transparent 100%)`} />
-      <At x={x} y={y} w={L * 0.9} h={34 * s} o={k(0.8)}
-        bg={`radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba(hot, 0.75)} 0%, ${rgba(col, 0.5)} 18%, ${rgba(col, 0.16)} 50%, transparent 100%)`} />
-      <At x={x} y={y} w={L} h={Math.max(2.5, 6 * s)} o={k(1)}
-        bg={`radial-gradient(ellipse 50% 50% at 50% 50%, rgba(255,255,255,1) 0%, ${rgba(hot, 0.95)} 12%, ${rgba(col, 0.7)} 35%, ${rgba(col, 0.25)} 70%, transparent 100%)`} />
-      {[-1, 1].map((d) => (
-        <At key={d} x={x + d * 30 * s} y={y + d * 15 * s} w={L * 0.45} h={Math.max(2, 3.5 * s)} o={k(0.5)}
-          bg={`radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba(mixHex(sec, '#ffffff', 0.4), 0.85)} 0%, ${rgba(sec, 0.35)} 40%, transparent 100%)`} />
-      ))}
-      {/* faint vertical spike */}
-      <At x={x} y={y} w={Math.max(2, 4 * s)} h={360 * s} o={k(0.35)}
-        bg={`radial-gradient(ellipse 50% 50% at 50% 50%, ${rgba(hot, 0.8)} 0%, ${rgba(col, 0.2)} 40%, transparent 100%)`} />
-      {/* hot core */}
-      <At x={x} y={y} w={150 * s} h={150 * s} o={k(1.1)}
-        bg={`radial-gradient(circle closest-side, rgba(255,255,255,1) 0%, rgba(255,255,255,0.92) 14%, ${rgba(hot, 0.6)} 30%, ${rgba(col, 0.22)} 60%, transparent 100%)`} />
-      {/* ghosts mirrored through the optical centre */}
-      {g > 0 && ghostDefs.map(([t, size, shape, c, a], i) => {
+  const ref = useCanvasDraw((ctx) => {
+    if (I < 0.005) return;
+    const s = scale;
+    const L = 2600 * s * streak;
+    const hot = mixHex(col, '#ffffff', 0.65);
+    const k = (a: number) => Math.min(1, a * I);
+    const kg = (a: number) => Math.min(1, a * Math.sqrt(I)); // glows grow slower than the core (avoids milky bursts)
+    const vx = x - center[0], vy = y - center[1];
+    const off = Math.min(1, Math.hypot(vx, vy) / 700);
+    const g = ghosts * (0.55 + 0.45 * off);
+    const rot = (f * 0.06 + seed * 37) % 360;
+    ctx.globalCompositeOperation = 'lighter';
+    // horizontal haze band
+    if (veil > 0) {
+      const rx = Math.max(1920, L * 0.6), a = kg(veil * 0.55);
+      radialFill(ctx, x, y, rx, [[0, rgba(col, 0.22 * a)], [0.4, rgba(mixHex(col, sec, 0.5), 0.08 * a)], [1, rgba(col, 0)]], (260 * s) / rx);
+    }
+    // wide atmospheric + medium glow
+    radialFill(ctx, x, y, 750 * s, [[0, rgba(sec, 0.22 * kg(0.9))], [0.3, rgba(sec, 0.09 * kg(0.9))], [0.6, rgba(sec, 0.025 * kg(0.9))], [1, rgba(sec, 0)]]);
+    radialFill(ctx, x, y, 260 * s, [[0, rgba(hot, 0.55 * kg(1))], [0.22, rgba(col, 0.28 * kg(1))], [0.5, rgba(col, 0.09 * kg(1))], [1, rgba(col, 0)]]);
+    // starburst rays
+    if (rays > 0) {
+      drawRays(ctx, 'flareRaysA', x, y, 550 * s, rot, Math.max(4, Math.round(rays * 0.5)), seed, mixHex(col, '#ffffff', 0.5), k(0.85) * 0.9,
+        [[0, 'rgba(0,0,0,1)'], [0.12, 'rgba(0,0,0,0.55)'], [0.4, 'rgba(0,0,0,0.15)'], [1, 'rgba(0,0,0,0)']]);
+      drawRays(ctx, 'flareRaysB', x, y, 280 * s, -rot * 0.7 + 11, rays, seed + 5, hot, k(0.8) * 0.85,
+        [[0, 'rgba(0,0,0,1)'], [0.18, 'rgba(0,0,0,0.5)'], [1, 'rgba(0,0,0,0)']]);
+    }
+    // anamorphic streaks (ellipses: haze → glow → hairline core)
+    const blue = mixHex(col, '#3A6BFF', 0.35);
+    radialFill(ctx, x, y, L * 0.31, [[0, rgba(blue, 0.28 * k(0.55))], [0.45, rgba(mixHex(col, '#3A6BFF', 0.5), 0.08 * k(0.55))], [1, rgba(blue, 0)]], (95 * s) / (L * 0.31));
+    radialFill(ctx, x, y, L * 0.45, [[0, rgba(hot, 0.75 * k(0.8))], [0.18, rgba(col, 0.5 * k(0.8))], [0.5, rgba(col, 0.16 * k(0.8))], [1, rgba(col, 0)]], (17 * s) / (L * 0.45));
+    radialFill(ctx, x, y, L * 0.5, [[0, rgba('#ffffff', k(1))], [0.12, rgba(hot, 0.95 * k(1))], [0.35, rgba(col, 0.7 * k(1))], [0.7, rgba(col, 0.25 * k(1))], [1, rgba(col, 0)]], Math.max(1.25, 3 * s) / (L * 0.5));
+    const secHot = mixHex(sec, '#ffffff', 0.4);
+    for (const d of [-1, 1]) radialFill(ctx, x + d * 30 * s, y + d * 15 * s, L * 0.225, [[0, rgba(secHot, 0.85 * k(0.5))], [0.4, rgba(sec, 0.35 * k(0.5))], [1, rgba(sec, 0)]], Math.max(1, 1.75 * s) / (L * 0.225));
+    // faint vertical spike
+    radialFill(ctx, x, y, 180 * s, [[0, rgba(hot, 0.8 * k(0.35))], [0.4, rgba(col, 0.2 * k(0.35))], [1, rgba(col, 0)]], 1, Math.max(1, 2 * s) / (180 * s));
+    // hot core
+    radialFill(ctx, x, y, 75 * s, [[0, rgba('#ffffff', k(1.1))], [0.14, rgba('#ffffff', 0.92 * k(1.1))], [0.3, rgba(hot, 0.6 * k(1.1))], [0.6, rgba(col, 0.22 * k(1.1))], [1, rgba(col, 0)]]);
+    // ghosts mirrored through the optical centre
+    if (g > 0) {
+      const ghostDefs: [number, number, 'hex' | 'oct' | 'disc' | 'ring', string, number][] = [
+        [0.55, 34, 'disc', VC.white, 0.16], [0.22, 70, 'hex', sec, 0.13], [-0.18, 46, 'disc', VC.pistachio, 0.12], [-0.42, 150, 'ring', col, 0.1],
+        [-0.7, 96, 'oct', VC.magenta, 0.08], [-0.95, 30, 'disc', col, 0.2], [-1.25, 230, 'hex', sec, 0.06], [-1.6, 120, 'disc', VC.amber, 0.05],
+      ];
+      ghostDefs.forEach(([t, size, shape, c, a0], i) => {
         const gx = center[0] + vx * t, gy = center[1] + vy * t;
-        const sz = size * s * (0.85 + 0.3 * hash(seed * 7 + i));
-        const al = a * g;
-        if (shape === 'disc')
-          return <At key={i} x={gx} y={gy} w={sz} h={sz} o={k(1)} bg={`radial-gradient(circle closest-side, ${rgba(c, al * 1.2)} 0%, ${rgba(c, al * 0.8)} 55%, ${rgba(c, al * 0.25)} 85%, transparent 100%)`} />;
-        if (shape === 'ring')
-          return <At key={i} x={gx} y={gy} w={sz} h={sz} o={k(1)} bg={`radial-gradient(circle closest-side, ${rgba(c, al * 0.15)} 0%, ${rgba(c, al * 0.35)} 70%, ${rgba(mixHex(c, '#ffffff', 0.4), al * 1.3)} 90%, transparent 100%)`} />;
-        return (
-          <At key={i} x={gx} y={gy} w={sz} h={sz} o={k(1)} clip={shape === 'hex' ? hexClip : octClip} rot={12}
-            bg={`radial-gradient(circle closest-side, ${rgba(c, al * 0.35)} 0%, ${rgba(c, al * 0.6)} 70%, ${rgba(mixHex(c, '#ffffff', 0.3), al * 1.25)} 96%, ${rgba(c, al * 0.6)} 100%)`} />
-        );
-      })}
-      {/* rainbow ring ghost on the mirrored side */}
-      {ring && g > 0 && (
-        <At x={center[0] - vx * 0.85} y={center[1] - vy * 0.85} w={620 * s} h={620 * s} o={k(0.9 * g)}
-          mask={`linear-gradient(${(Math.atan2(vy, vx) * 180) / Math.PI + 90}deg, transparent 15%, black 60%, black 100%)`}
-          bg={`radial-gradient(circle closest-side, transparent 80%, rgba(255,60,90,0.07) 83%, rgba(255,170,40,0.08) 86%, rgba(200,255,90,0.07) 89%, rgba(60,230,255,0.08) 92%, rgba(90,110,255,0.07) 95%, rgba(170,80,255,0.05) 98%, transparent 100%)`} />
-      )}
-    </div>
-  );
+        const r = (size * s * (0.85 + 0.3 * hash(seed * 7 + i))) / 2;
+        const al = a0 * g * Math.min(1, I);
+        if (shape === 'disc') return radialFill(ctx, gx, gy, r, [[0, rgba(c, al * 1.2)], [0.55, rgba(c, al * 0.8)], [0.85, rgba(c, al * 0.25)], [1, rgba(c, 0)]]);
+        if (shape === 'ring') return radialFill(ctx, gx, gy, r, [[0, rgba(c, al * 0.15)], [0.7, rgba(c, al * 0.35)], [0.9, rgba(mixHex(c, '#ffffff', 0.4), al * 1.3)], [1, rgba(c, 0)]]);
+        const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, r);
+        gr.addColorStop(0, rgba(c, al * 0.35));
+        gr.addColorStop(0.7, rgba(c, al * 0.6));
+        gr.addColorStop(0.96, rgba(mixHex(c, '#ffffff', 0.3), al * 1.25));
+        gr.addColorStop(1, rgba(c, al * 0.6));
+        ctx.fillStyle = gr;
+        polyPath(ctx, gx, gy, r, shape === 'hex' ? 6 : 8, 0.2 + (shape === 'hex' ? Math.PI / 6 : Math.PI / 8));
+        ctx.fill();
+      });
+      // rainbow ring ghost on the mirrored side, fading toward the centre
+      if (ring) {
+        const R = 310 * s;
+        const {c: S, ctx: r2} = scratchCanvas('flareRing', Math.ceil(R * 2), Math.ceil(R * 2));
+        radialFill(r2, R, R, R, [[0.8, 'rgba(0,0,0,0)'], [0.83, 'rgba(255,60,90,0.07)'], [0.86, 'rgba(255,170,40,0.08)'], [0.89, 'rgba(200,255,90,0.07)'], [0.92, 'rgba(60,230,255,0.08)'], [0.95, 'rgba(90,110,255,0.07)'], [0.98, 'rgba(170,80,255,0.05)'], [1, 'rgba(0,0,0,0)']]);
+        const ang = Math.atan2(vy, vx);
+        const lg = r2.createLinearGradient(R - Math.cos(ang) * R, R - Math.sin(ang) * R, R + Math.cos(ang) * R, R + Math.sin(ang) * R);
+        lg.addColorStop(0, 'rgba(0,0,0,1)');
+        lg.addColorStop(0.4, 'rgba(0,0,0,1)');
+        lg.addColorStop(0.85, 'rgba(0,0,0,0)');
+        r2.globalCompositeOperation = 'destination-in';
+        r2.fillStyle = lg;
+        r2.fillRect(0, 0, R * 2, R * 2);
+        ctx.globalAlpha = Math.min(1, 0.9 * g * Math.min(1.5, I));
+        ctx.drawImage(S, center[0] - vx * 0.85 - R, center[1] - vy * 0.85 - R);
+        ctx.globalAlpha = 1;
+      }
+    }
+  });
+  if (I < 0.005) return null;
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend, ...style}} />;
 };
 
 export type FlareBurstProps = Omit<LensFlareProps, 'intensity'> & {

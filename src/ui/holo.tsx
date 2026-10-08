@@ -86,11 +86,11 @@ const HoloAppBody: React.FC<HoloAppFrameProps> = ({
     </GlassPane>
   )});
   layers.push({key: 'top', x: 276, y: 6, w: 1300, h: 76, zu: 1.1, sx: 0, sy: -0.6, node: <TopBar title={title} />});
-  layers.push({key: 'main', x: 252, y: 78, w: 964, h: 912, zu: 1.6, sx: 0, sy: 0, anchors: [[24, 24], [940, 24], [24, 888], [940, 888]], node: mainPane ? (
-    <GlassPane w={964} h={912} radius={34} tint="glass" rim={0.9} preserve3d>
-      <div style={{position: 'absolute', left: 12, top: 8, width: 940, height: 895, transformStyle: 'preserve-3d'}}>{mainNode}</div>
-    </GlassPane>
-  ) : <div style={{position: 'absolute', left: 12, top: 8, width: 940, height: 895, transformStyle: 'preserve-3d'}}>{mainNode}</div>});
+  // main: a FLAT backing pane (one composited quad) + the 3D content as a sibling 2px above it.
+  // (A preserve-3d GlassPane would split into several 3D quads incl. a masked rim: ~+240 ms/frame.)
+  layers.push({key: 'main', x: 252, y: 78, w: 964, h: 912, zu: 1.6, sx: 0, sy: 0, anchors: [[24, 24], [940, 24], [24, 888], [940, 888]], node: (
+    <MainLayer pane={mainPane}>{mainNode}</MainLayer>
+  )});
   layers.push({key: 'chat', x: 1222, y: 86, w: 360, h: 895, zu: 2.4, sx: 1, sy: 0, anchors: [[24, 24], [336, 24], [24, 871], [336, 871]], node: null});
 
   const n = layers.length;
@@ -146,9 +146,16 @@ const HoloAppBody: React.FC<HoloAppFrameProps> = ({
   );
 };
 
+const MainLayer: React.FC<{pane: boolean; flash?: number; sheen?: number; children: React.ReactNode}> = ({pane, flash, sheen, children}) => (
+  <div style={{position: 'absolute', inset: 0, transformStyle: 'preserve-3d'}}>
+    {pane && <GlassPane w={964} h={912} radius={34} tint="glass" rim={0.9} flash={flash} sheen={sheen} />}
+    <div style={{position: 'absolute', left: 12, top: 8, width: 940, height: 895, transformStyle: 'preserve-3d', transform: 'translateZ(2px)'}}>{children}</div>
+  </div>
+);
+
 /** Passes flash/sheen to direct GlassPane children (keeps layer nodes simple). */
 const LayerFx: React.FC<{flash: number; sheen?: number; children: React.ReactNode}> = ({flash, sheen, children}) => {
-  if (React.isValidElement(children) && (children.type === GlassPane)) {
+  if (React.isValidElement(children) && (children.type === GlassPane || children.type === MainLayer)) {
     return React.cloneElement(children as React.ReactElement<any>, {flash: Math.max(flash, (children.props as any).flash ?? 0), sheen: (children.props as any).sheen ?? sheen});
   }
   return <>{children}</>;

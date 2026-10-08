@@ -262,14 +262,20 @@ export type FloorGridProps = {
   opacity?: number;
   /** segments per line (smoothness of the fade) */
   seg?: number;
+  /** segments closer than this to the lens fade out (px, default 350) — avoids fat lines at the lens */
+  nearFade?: number;
+  /** also draw when the camera is on the other side of the plane (default false: floors vanish from below) */
+  twoSided?: boolean;
 };
 
 /** Camera-projected grid floor drawn as 2D SVG — exact perspective for the World camera, near-plane clipped,
  *  ~1 ms per frame (a CSS 3D plane of the same size costs 0.5–2 s!). Put it in <World backdrop={…}> so all
  *  3D objects draw over it. Must be rendered inside a <World> (uses useCam()). */
-export const FloorGrid: React.FC<FloorGridProps> = ({y = 460, step = 140, extent = 3500, center = [0, -600], color = 'rgb(180,155,242)', width = 2, fade = [600, 3200], far = 9000, opacity = 0.4, seg = 10}) => {
+export const FloorGrid: React.FC<FloorGridProps> = ({y = 460, step = 140, extent = 3500, center = [0, -600], color = 'rgb(180,155,242)', width = 2, fade = [600, 3200], far = 9000, opacity = 0.4, seg = 10, nearFade = 350, twoSided = false}) => {
   const c = useCam();
   if (!c) return null;
+  // floor (plane below the subject, y-down world): camera must be above it (c.pos[1] < y) unless twoSided
+  if (!twoSided && c.pos[1] >= y - 1) return null;
   const near = 30;
   // segments are batched into one <path> per (opacity, width) bucket → a handful of DOM nodes
   const buckets = new Map<string, string[]>();
@@ -291,7 +297,7 @@ export const FloorGrid: React.FC<FloorGridProps> = ({y = 460, step = 140, extent
         if (pp.depth < near) { p = m; pp = projRaw(c, m); } else { q = m; qq = projRaw(c, m); }
       }
       const dm = (pp.depth + qq.depth) / 2;
-      o *= 1 - smoothstep(far * 0.5, far, dm);
+      o *= (1 - smoothstep(far * 0.5, far, dm)) * smoothstep(nearFade * 0.3, nearFade, dm);
       if (o < 0.01) continue;
       const sw = Math.max(0.5, Math.min(6, (width * c.persp) / dm));
       const bk = `${Math.round(o * 24) / 24}|${Math.round(sw * 4) / 4}`;

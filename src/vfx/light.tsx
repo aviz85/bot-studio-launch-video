@@ -1,6 +1,6 @@
 /* Light streaks, swooshes, warp speed lines, light leaks, god rays and volumetric beams. */
 import React from 'react';
-import {CX, CY, H, VC, W, clamp01, colorOf, easeInOutCubic, fbm1, full, glowSprite, hash, lin, mix, mixHex, noise1, prng, rgba, useCanvasDraw, useF} from './util';
+import {CX, CY, H, VC, W, clamp01, colorOf, easeInOutCubic, fbm1, full, glowSprite, hash, lin, mix, mixHex, noise1, prng, radialFill, rgba, scratchCanvas, useCanvasDraw, useF} from './util';
 
 /* ======================================================================
  * LightStreak — bundle of fast light streaks crossing the frame
@@ -298,16 +298,6 @@ export type GodRaysProps = {
   frame?: number;
 };
 
-const rayStops = (f: number, lobes: number, seed: number, speed: number, contrast: number, spread: number, direction: number, color: string, gain: number) => {
-  const stops: string[] = [];
-  const N = 180;
-  for (let i = 0; i <= N; i++) {
-    const deg = (i / N) * 360;
-    const a = beamAlpha(deg, f, lobes, seed, speed, contrast, spread, direction) * gain;
-    stops.push(`${rgba(color, a)} ${deg.toFixed(1)}deg`);
-  }
-  return `conic-gradient(from 90deg, ${stops.join(', ')})`;
-};
 /** Beam density at a given angle (deg, 0 = right, CSS-conic 'from 90deg' convention aligned). */
 const beamAlpha = (deg: number, f: number, lobes: number, seed: number, speed: number, contrast: number, spread: number, direction: number) => {
   const ph = deg + f * speed;
@@ -326,7 +316,8 @@ const beamAlpha = (deg: number, f: number, lobes: number, seed: number, speed: n
   return a;
 };
 
-/** God rays: soft volumetric shafts from a source (behind a logo, through panels), drifting slowly, with lit dust. */
+/** God rays: soft volumetric shafts from a source (behind a logo, through panels), drifting slowly, with lit dust.
+ *  Single screen-blended canvas: shafts at half-res (conic gradients × radial falloff), dust at full res. */
 export const GodRays: React.FC<GodRaysProps> = ({
   x = CX, y = CY, intensity = 1, color, secondary, lobes = 22, spread = 360, direction = 90, length = 1300, speed = 0.08, contrast = 2.6, dust = 1, core = 0.8, seed = 7, frame,
 }) => {
@@ -334,10 +325,32 @@ export const GodRays: React.FC<GodRaysProps> = ({
   const col = colorOf(color, VC.lilac);
   const sec = colorOf(secondary, VC.cyan);
   const I = Math.max(0, intensity);
-  const dustRef = useCanvasDraw((ctx, w) => {
-    if (dust <= 0 || I < 0.01) return;
-    const s = w / W;
-    ctx.scale(s, s);
+  const ref = useCanvasDraw((ctx) => {
+    if (I < 0.003) return;
+    const {c: S, ctx: s} = scratchCanvas('rays', W / 2, H / 2);
+    s.setTransform(0.5, 0, 0, 0.5, 0, 0);
+    const N = 180;
+    const layer = (lb: number, sd: number, sp: number, ct: number, c: string, gain: number) => {
+      const g = s.createConicGradient(0, x, y);
+      for (let i = 0; i <= N; i++) g.addColorStop(i / N, rgba(c, beamAlpha((i / N) * 360, f, lb, sd, sp, ct, spread, direction) * gain));
+      s.fillStyle = g;
+      s.fillRect(0, 0, W, H);
+    };
+    layer(lobes, seed, speed, contrast, col, 0.62 * Math.min(1, I));
+    s.globalCompositeOperation = 'lighter';
+    layer(Math.round(lobes * 1.7), seed + 13, -speed * 0.6, contrast + 1, sec, 0.3 * Math.min(1, I));
+    s.globalCompositeOperation = 'destination-in';
+    radialFill(s, x, y, length, [[0, 'rgba(0,0,0,0.9)'], [0.06, 'rgba(0,0,0,1)'], [0.18, 'rgba(0,0,0,0.7)'], [0.4, 'rgba(0,0,0,0.38)'], [0.7, 'rgba(0,0,0,0.14)'], [1, 'rgba(0,0,0,0)']]);
+    s.fillStyle = 'rgba(0,0,0,0)';
+    s.globalCompositeOperation = 'lighter';
+    if (core > 0) {
+      const a = clamp01(core * I);
+      radialFill(s, x, y, 500, [[0, rgba('#ffffff', 0.75 * a)], [0.1, rgba(mixHex(col, '#fff', 0.4), 0.42 * a)], [0.3, rgba(col, 0.16 * a)], [0.6, rgba(VC.violet, 0.05 * a)], [1, rgba(VC.violet, 0)]]);
+    }
+    ctx.globalAlpha = Math.min(1, I);
+    ctx.drawImage(S, 0, 0, W, H);
+    ctx.globalAlpha = 1;
+    if (dust <= 0) return;
     ctx.globalCompositeOperation = 'lighter';
     const rnd = prng(seed + 99);
     const n = Math.round(150 * dust);
@@ -348,7 +361,6 @@ export const GodRays: React.FC<GodRaysProps> = ({
       const sp = 0.1 + rnd() * 0.35;
       const sz = 2 + Math.pow(rnd(), 3) * 9;
       const ph = rnd() * 100;
-      // slow drift: orbit + outward creep, wrapped
       const rr = (r + f * sp * 0.9) % (length * 0.9);
       const ang = a0 + Math.sin(f * 0.01 + ph) * 3;
       const dx = Math.cos((ang * Math.PI) / 180) * rr + Math.sin(f * 0.013 + ph) * 12;
@@ -366,20 +378,7 @@ export const GodRays: React.FC<GodRaysProps> = ({
     }
   });
   if (I < 0.003) return null;
-  const R = length;
-  const mask = `radial-gradient(circle closest-side, rgba(0,0,0,0.9) 0%, black 6%, rgba(0,0,0,0.7) 18%, rgba(0,0,0,0.38) 40%, rgba(0,0,0,0.14) 70%, transparent 100%)`;
-  const box: React.CSSProperties = {position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, maskImage: mask, WebkitMaskImage: mask, mixBlendMode: 'screen'};
-  return (
-    <div style={{...full, overflow: 'hidden', mixBlendMode: 'screen'}}>
-      <div style={{...box, opacity: clamp01(I), background: rayStops(f, lobes, seed, speed, contrast, spread, direction, col, 0.62)}} />
-      <div style={{...box, opacity: clamp01(0.8 * I), background: rayStops(f, Math.round(lobes * 1.7), seed + 13, -speed * 0.6, contrast + 1, spread, direction, sec, 0.38)}} />
-      {core > 0 && (
-        <div style={{position: 'absolute', left: x - 500, top: y - 500, width: 1000, height: 1000, opacity: clamp01(core * I),
-          background: `radial-gradient(circle closest-side, rgba(255,255,255,0.75) 0%, ${rgba(mixHex(col, '#fff', 0.4), 0.42)} 10%, ${rgba(col, 0.16)} 30%, ${rgba(VC.violet, 0.05)} 60%, transparent 100%)`}} />
-      )}
-      {dust > 0 && <canvas ref={dustRef} width={W} height={H} style={{...full}} />}
-    </div>
-  );
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: 'screen'}} />;
 };
 
 /* ======================================================================

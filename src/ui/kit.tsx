@@ -164,21 +164,28 @@ export const Shine: React.FC<{p: number; strength?: number; width?: number}> = (
 
 /* ---------------- 3D stage ---------------- */
 export type Cam = {rx?: number; ry?: number; rz?: number; x?: number; y?: number; z?: number; s?: number};
-export const Stage: React.FC<{cam: Cam; children: React.ReactNode; persp?: number; origin?: string}> = ({cam, children, persp = 2200, origin = '50% 50%'}) => {
+/**
+ * 3D camera stage. `crisp`: apply the zoom `cam.s` as a 2D scale OUTSIDE the perspective container
+ * (x/y are compensated so framing matches). Chromium rasterises 3D layers at ~1x, so a scale inside
+ * the 3D transform turns soft above ~1.2x; the outer 2D scale re-rasterises crisply. Use it for macro close-ups.
+ */
+export const Stage: React.FC<{cam: Cam; children: React.ReactNode; persp?: number; origin?: string; crisp?: boolean}> = ({cam, children, persp = 2200, origin = '50% 50%', crisp}) => {
   const {rx = 0, ry = 0, rz = 0, x = 0, y = 0, z = 0, s = 1} = cam;
-  return (
+  const outer = crisp && s !== 1 ? s : 1;
+  const stage = (
     <AbsoluteFill style={{perspective: persp, perspectiveOrigin: '50% 45%'}}>
       <AbsoluteFill
         style={{
           transformStyle: 'preserve-3d',
           transformOrigin: origin,
-          transform: `translate3d(${x}px, ${y}px, ${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})`,
+          transform: `translate3d(${x / outer}px, ${y / outer}px, ${z}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s / outer})`,
         }}
       >
         {children}
       </AbsoluteFill>
     </AbsoluteFill>
   );
+  return outer !== 1 ? <AbsoluteFill style={{transform: `scale(${outer})`}}>{stage}</AbsoluteFill> : stage;
 };
 
 /** Absolutely positioned 3D layer (centered at cx, cy in a 1920x1080 space). */

@@ -7,5 +7,6 @@ export * from './path';
 export * from './ramp';
 export * from './dof';
 export * from './blur';
+export * from './masks';
 export * from './beats';
 export * from './shots';
