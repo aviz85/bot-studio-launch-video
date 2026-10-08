@@ -16,3 +16,11 @@
 - Shared bug: `GlassOrbNode` (src/ui) draws its bloom outside its box, which clips into a visible light rectangle in 3D (worst when active>0; visible in demo:glass frames 380 and 415). s04 uses a local `HoloOrb` in `src/scenes/s04/common.tsx`. Consider fixing it in src/ui (render bloom inside the element, or as a radial gradient on the element itself).
 - s03's whip direction and its 1075 whip cue match s04's incoming half, so s04 dropped its own whip at 1075.
 - s04 exits at 1397 with a zoom-through into the collect_details orb plus a `swoosh_rev` ending at 1397; s05 opens with `zoomThrough({dur:16})` and an emerge whoosh at 1397.
+
+## s03
+- A Shots `out: whip` on a heavy last shot renders the shot twice (~7× cost). s03 uses an in-camera whip pan instead; watch other scenes for the same cost.
+- HoloAppFrame has only one linear `assemble` clock; s03 uses a local per-layer rig (`src/scenes/s03/app.tsx`).
+- ChromaticAberration around a 3D world costs ~1 s/frame; s03 uses a cheap RGB fringe instead.
+- Avatar: s03's hero avatar (`src/scenes/s03/art.tsx`) uses the real logo's "<" chevron wink; the kit `Avatar` uses a flat-line wink. Unify (s10 has been told to match s03).
+- s03 covers the whip SFX at 1075 (s04 dropped its own).
+- Heaviest frames: drop 864–870 (~2.4× the lockup), zoom-through at 966, whip-out at 1072.

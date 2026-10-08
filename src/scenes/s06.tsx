@@ -577,14 +577,14 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const at = (x: number) => camPath(x, b4);
         const m = camMotion(at, lt, rowPt('measure', 120, 10));
         const cam = addCam(at(lt), ...bLife(lt, 0.5, 14));
-        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('measure', 0, 15)} aperture={18} mb={{vx: m.dx, vy: m.dy}} barFlare />;
+        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('measure', 0, 15)} aperture={18 * clamp01((lt - 3) / 8)} mb={{vx: m.dx, vy: m.dy}} barFlare />;
       }},
     {from: L(77), to: L(79), name: 'B5 signals', in: flashCut({dur: 8, peak: 0.6, color: '#BFF4FF'}),
       render: (lt, _p, info) => {
         const at = (x: number) => camPath(x, b5);
         const m = camMotion(at, lt, [0, 60, 0]);
         const cam = addCam(at(lt), ...bLife(lt, 0.7, 15));
-        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rackB5(cam)} aperture={14} mb={{vx: m.dx, vy: m.dy}} />;
+        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rackB5(cam)} aperture={14 * clamp01((lt - 5) / 10)} mb={{vx: m.dx, vy: m.dy}} />;
       }},
     {from: L(79), to: dur, name: 'B6 hero', in: cut(), out: whip({dir: 'right', dur: 12}),
       render: (lt, _p, info) => {

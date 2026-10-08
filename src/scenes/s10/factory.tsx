@@ -3,8 +3,8 @@
 import React from 'react';
 import {AbsoluteFill} from 'remotion';
 import {DISPLAY, FONT, kick} from '../../lib';
-import {World, Obj, FloorGrid, ResolvedCam, resolveCam, project, depthOf, CamSpec, V3, MotionBlur, camMotion} from '../../cine';
-import {SpaceBackdrop, Glint, GodRays} from '../../vfx';
+import {World, Obj, FloorGrid, ResolvedCam, resolveCam, project, depthOf, CamSpec, V3} from '../../cine';
+import {SpaceBackdrop, Glint, GodRays, SpeedLines} from '../../vfx';
 import {Avatar, Icon, BOTS, BotCard, UITheme, Rim, Sheen} from '../../ui';
 import {lb, clamp01, mix, smoothstep, eo, ei, eio, decay, HudLabel} from './common';
 
@@ -282,8 +282,11 @@ export const FactorySet: React.FC<{t: number; cam: ResolvedCam; opts?: FactoryOp
 /* ------------------------------------------------------------------ */
 export const FactoryFrame: React.FC<{
   t: number; f: number; from: number; cam: CamSpec; opts?: FactoryOpts; aperture?: number; focus?: number | V3;
-  mb?: {vx: number; vy: number}; spark?: number; glint?: number; floor?: boolean; label?: boolean; rays?: number; dim?: number;
-}> = ({t, f, from, cam, opts, aperture = 0, focus, mb, spark = 1, glint = 0, floor = true, label = false, rays = 0, dim = 0}) => {
+  spark?: number; glint?: number; floor?: boolean; label?: boolean; rays?: number; dim?: number;
+  /** speed streaks for the fast phases of speed ramps: [intensity, travel] (negative travel = pulling back). Cheaper than
+   *  MotionBlur, which costs ~8x here: an SVG filter over ~150 preserve-3d card layers. */
+  streak?: [number, number];
+}> = ({t, f, from, cam, opts, aperture = 0, focus, spark = 1, glint = 0, floor = true, label = false, rays = 0, dim = 0, streak}) => {
   const rc = resolveCam(cam);
   const SP = sparkAt(t);
   const sp = project(rc, SP);
@@ -315,7 +318,8 @@ export const FactoryFrame: React.FC<{
   );
   return (
     <AbsoluteFill>
-      {mb && Math.hypot(mb.vx, mb.vy) > 9 ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
+      {world}
+      {streak && streak[0] > 0.02 && <SpeedLines x={sp.visible ? sp.x : 960} y={sp.visible ? sp.y : 540} intensity={streak[0]} travel={streak[1]} count={260} glow={0.4} frame={t} />}
       {dim > 0.01 && <AbsoluteFill style={{background: `radial-gradient(55% 60% at ${sp.x.toFixed(0)}px ${sp.y.toFixed(0)}px, rgba(4,2,10,${(0.3 * dim).toFixed(3)}) 0%, rgba(4,2,10,${(0.75 * dim).toFixed(3)}) 65%, rgba(4,2,10,${(0.92 * dim).toFixed(3)}) 100%)`}} />}
       {rays > 0.01 && sp.visible && <GodRays x={sp.x} y={sp.y} intensity={rays} frame={t} lobes={18} length={1500} dust={0.6} />}
       {glint > 0.01 && sp.visible && <Glint x={sp.x} y={sp.y} size={260 + 300 * glint} intensity={glint * (0.8 + 0.4 * kick(f, 8))} frame={t} />}
