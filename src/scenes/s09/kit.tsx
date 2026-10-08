@@ -142,8 +142,8 @@ export const GlassBubble: React.FC<{b: BubbleSpec; t: number; fs?: number; glow?
 /* ------------------------------------------------------------------ */
 /* Holo feature chip                                                     */
 /* ------------------------------------------------------------------ */
-export const FeatureChip: React.FC<{icon: string; text: string; p: number; fs?: number; pulse?: number; extra?: React.ReactNode}> = ({icon, text, p, fs = 27, pulse = 0, extra}) => {
-  if (p <= 0) return null;
+export const FeatureChip: React.FC<{icon: string; text: string; p: number; o?: number; fs?: number; pulse?: number; extra?: React.ReactNode}> = ({icon, text, p, o = 1, fs = 27, pulse = 0, extra}) => {
+  if (p <= 0 || o <= 0.01) return null;
   const I = Icon[icon] ?? Icon.sparkle;
   const pe = bo(p);
   const g = 0.7 + 0.6 * pulse;
@@ -154,7 +154,7 @@ export const FeatureChip: React.FC<{icon: string; text: string; p: number; fs?: 
         fontFamily: FONT, fontWeight: 600, fontSize: fs, letterSpacing: '-0.005em', color: '#F4F0FF',
         background: 'linear-gradient(160deg, rgba(52,30,98,0.86) 0%, rgba(22,11,46,0.84) 60%, rgba(16,30,52,0.84) 100%)',
         boxShadow: `inset 0 0 0 1.5px rgba(127,231,255,${0.55 + 0.3 * pulse}), inset 0 1px 0 rgba(255,255,255,0.35), 0 ${fs * 0.5}px ${fs * 1.2}px -${fs * 0.5}px rgba(0,0,0,0.8), 0 0 ${fs * 1.3 * g}px rgba(127,231,255,${0.32 * g})`,
-        transform: `scale(${lerp(0.55, 1, pe)}) translateY(${(1 - eo(p)) * fs}px)`, opacity: clamp(p * 3),
+        transform: `scale(${lerp(0.55, 1, pe) * lerp(0.85, 1, o)}) translateY(${(1 - eo(p)) * fs}px)`, opacity: clamp(p * 3) * o,
       }}
     >
       <div style={{width: fs * 1.45, height: fs * 1.45, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 35% 30%, #FFFFFF 0%, #7FE7FF 38%, #8C6BEA 100%)', boxShadow: `0 0 ${fs * 0.8}px rgba(127,231,255,0.75)`}}>

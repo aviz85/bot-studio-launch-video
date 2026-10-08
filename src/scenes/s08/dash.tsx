@@ -77,7 +77,7 @@ export const SignalWallCard: React.FC<{f: number}> = ({f}) => {
   const th = useUI();
   const cols = 3, rows = Math.ceil(METRICS.length / cols);
   return (
-    <Card style={{width: 590, height: 580, padding: '24px 22px', boxSizing: 'border-box'}}>
+    <Card style={{width: 590, height: 580, padding: '24px 22px', boxSizing: 'border-box'}} glow={0.5 * kick(f, 8)}>
       <div style={{display: 'flex', alignItems: 'center', fontFamily: DISPLAY, fontWeight: 800, fontSize: 27, marginBottom: 16, letterSpacing: '-0.01em'}}>
         Signal Wall
         <div style={{flex: 1}} />

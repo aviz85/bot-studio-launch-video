@@ -213,7 +213,7 @@ export const CHIPS: ChipDef[] = [
   {name: 'enjoyment', value: '2', kind: 'score', phi0: 212, z: 560},
   {name: 'goal_clear', value: 'yes', conf: 0.94, kind: 'noul', phi0: -32, z: 420},
   {name: 'frustration', value: '0', kind: 'score', tone: 'amber', phi0: 148, z: 380},
-  {name: 'needs_person', value: 'no', kind: 'noul', tone: 'cyan', phi0: 30, z: 640},
+  {name: 'needs_person', value: 'no', kind: 'noul', tone: 'cyan', phi0: 44, z: 560},
 ];
 export const ORBIT = {rx: 950, ry: 540, cy: -20, w: 0.2};
 

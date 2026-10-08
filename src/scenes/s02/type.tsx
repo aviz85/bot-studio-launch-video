@@ -58,10 +58,12 @@ export const Statement: React.FC<{
 }> = ({words, t, f, size, weight = 900, dur = 16, glow = 0.55, pulse = 0, tracking = '-0.045em', style}) => (
   <div
     style={{
-      display: 'flex', alignItems: 'flex-end', whiteSpace: 'nowrap', fontFamily: DISPLAY, fontWeight: weight, fontSize: size, lineHeight: 1,
-      letterSpacing: tracking, filter: glow > 0 ? `drop-shadow(0 0 ${Math.round(size * 0.12)}px rgba(150,115,255,${(0.42 * glow).toFixed(3)}))` : undefined, ...style,
+      position: 'relative', isolation: 'isolate', display: 'flex', alignItems: 'flex-end', whiteSpace: 'nowrap', fontFamily: DISPLAY, fontWeight: weight, fontSize: size, lineHeight: 1,
+      letterSpacing: tracking, ...style,
     }}
   >
+    {/* soft halo behind the line (a gradient — far cheaper than a drop-shadow filter on huge 3D text) */}
+    {glow > 0 && <div style={{position: 'absolute', zIndex: -1, left: '-6%', right: '-6%', top: '-10%', bottom: '-6%', background: `radial-gradient(50% 50% at 50% 56%, rgba(150,115,255,${(0.34 * glow).toFixed(3)}) 0%, rgba(120,80,230,${(0.14 * glow).toFixed(3)}) 55%, transparent 100%)`}} />}
     {words.map((wd, i) => {
       const u = clamp((t - wd.at) / dur);
       const e = expoOut(u);
@@ -75,7 +77,7 @@ export const Statement: React.FC<{
           <span
             style={{
               display: 'inline-block', transform: `translateY(${((1 - e) * 108).toFixed(2)}%)`, color: 'transparent', WebkitBackgroundClip: 'text', backgroundClip: 'text',
-              filter: blur > 0.4 ? `blur(${blur.toFixed(2)}px)` : sig ? `drop-shadow(0 0 ${Math.round(size * 0.08)}px rgba(69,227,176,${(0.35 + 0.5 * pulse).toFixed(3)}))` : undefined,
+              filter: blur > 0.4 ? `blur(${blur.toFixed(2)}px)` : undefined,
               ...fillStyle,
             }}
           >

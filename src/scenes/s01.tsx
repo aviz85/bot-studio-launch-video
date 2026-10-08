@@ -32,7 +32,7 @@ import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {SceneProps} from '../cine/types';
 import {
   World, Obj, CamKey, CamSpec, addCam, handheld, drift, kickPush, camPath, camMotion, resolveCam, project, MotionBlur,
-  Shots, beatShots, whip, flashCut, glitchCut, zoomThrough, cut, type ResolvedCam, type V3,
+  Shots, beatShots, whip, flashCut, cut, type ResolvedCam, type V3,
 } from '../cine';
 import {SpaceBackdrop, DustField, GodRays, LensFlare, HUDFrame, Glitch, Bokeh, Swoosh, Scanlines, Flash, VolumetricBeams} from '../vfx';
 import {B, band, clamp, rms} from '../lib';
@@ -88,7 +88,8 @@ const stutterTime = (t: number, L: (k: number) => number) => {
 /* Shared shot pieces                                                   */
 /* ------------------------------------------------------------------ */
 const Space: React.FC<{cam: ResolvedCam; t: number; from: number; intensity?: number}> = ({cam, t, from, intensity = 0.7}) => (
-  <SpaceBackdrop from={from} frame={t} intensity={intensity} haze={0} stars={220} camX={-cam.yaw * 24} camY={cam.pitch * 24} audio={0.8} />
+  // parallax clamped: the nebula texture only has ~±115 px of margin at 0.15× parallax
+  <SpaceBackdrop from={from} frame={t} intensity={intensity} haze={0} stars={220} camX={clamp(-cam.yaw * 24, -420, 420)} camY={clamp(cam.pitch * 24, -420, 420)} audio={0.8} />
 );
 
 const WidgetObj: React.FC<{t: number; light?: number; k?: number; ry?: number; corrupt?: number}> = ({t, light = 1, k = 1, ry = -12, corrupt = 0}) => (
@@ -317,8 +318,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 8, name: 'one·topdown', in: whip({dir: 'up', dur: 12, color: '#D9CEFF'}), render: (lt) => shot3(lt)},
     {beat: 9, name: 'giant·dutch', in: flashCut({dur: 8, peak: 0.5, color: '#CDBBFF', split: 0.4}), render: (lt) => shot4(lt, 0, L(10) - L(9) - 9)},
     {beat: 10, name: 'prompt·macro', in: flashCut({dur: 10, peak: 0.6, color: '#D9CEFF', split: 0.4, punch: 0.1}), render: (lt) => shot5(lt)},
-    {beat: 12, name: 'answer', in: glitchCut({dur: 8, seed: 3}), render: (lt) => shot6(lt)},
-    {beat: 13, name: 'why·wide', in: glitchCut({dur: 8, seed: 5, slices: false}), render: (lt) => shot7(lt, 0.45)},
+    {beat: 12, name: 'answer', in: cut(), render: (lt) => shot6(lt)}, // glitch cut: single Glitch pass spikes on the cut + tear bands (cheaper than glitchCut)
+    {beat: 13, name: 'why·wide', in: cut(), render: (lt) => shot7(lt, 0.45)},
     {beat: 14, name: 'stutter·macro', in: cut(), render: (lt) => shot5(lt + 40, 0.9)},
     {beat: 14.5, name: 'stutter·top', in: cut(), render: (lt) => shot3(lt + 10, 0.9, 40)},
     {beat: 15, name: 'stutter·corner', in: cut(), render: (lt) => shot4(lt + 8, 1)},
@@ -326,7 +327,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   ]);
 
   /* ---------- overlays ---------- */
-  const glitchAmt = cor * (t >= L(12) ? 1 : 0);
+  // Glitch (slice displacement) only in bursts: it is the expensive filter (~+1.3 s/still over a 3D world, as is a
+  // full-frame ChromaticAberration). Between bursts: frame jitter, tear bands, corrupted lines, stutter.
+  const cutsG = [L(12), L(13), L(14), L(14.5), L(15)];
+  const burst = cutsG.some((c) => t >= c - 1 && t <= c + 2) || h01(Math.floor(t / 2), 91) < 0.18;
+  const glitchAmt = t >= L(12) - 1 && burst ? Math.max(0.35, cor) : 0;
+  const jit = t >= L(12) && h01(Math.floor(t / 2), 93) < cor * 0.45 ? (h01(t, 94) - 0.5) * 60 * cor : 0;
   const exp = exposure(t0);
   const sideScrim = Math.max(smooth01((t - (L(2) - 4)) / 12) * (1 - smooth01((t - L(4)) / 8)) * 0.6, smooth01((t - (L(8) - 6)) / 10) * (1 - smooth01((t - L(12)) / 4)));
   const centerScrim = smooth01((t - L(13)) / 8);
@@ -353,9 +359,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const content = (
     <AbsoluteFill>
       <Glitch amount={glitchAmt} displace={50 + 90 * cor} rgb={6 + 10 * cor} density={1.2} hold={2} seed={7} frame={t}>
-        <Shots shots={shots} t={t} />
+        <AbsoluteFill style={jit ? {transform: `translateX(${jit.toFixed(1)}px)`} : undefined}>
+          <Shots shots={shots} t={t} />
+        </AbsoluteFill>
       </Glitch>
       {t >= L(12) && <Scanlines opacity={0.08 + 0.12 * cor} spacing={3} roll={3} frame={t} />}
+      <TearBands t={t} cuts={[L(12), L(13), L(14), L(14.5), L(15)]} />
       {/* copy scrims */}
       {sideScrim > 0.01 && <AbsoluteFill style={{background: 'linear-gradient(90deg, rgba(4,2,10,0.8) 0%, rgba(4,2,10,0.5) 30%, rgba(4,2,10,0) 56%)', opacity: sideScrim}} />}
       {centerScrim > 0.01 && t < L(15.5) + 2 && <AbsoluteFill style={{background: 'radial-gradient(50% 32% at 50% 47%, rgba(4,2,10,0.72) 0%, rgba(4,2,10,0.35) 60%, rgba(4,2,10,0) 100%)', opacity: centerScrim}} />}
@@ -379,6 +388,27 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill style={collapse ? {...collapse, transformOrigin: '50% 50%'} : undefined}>{content}</AbsoluteFill>
       {line}
       {exp < 1 && <AbsoluteFill style={{background: '#000', opacity: 1 - exp}} />}
+    </AbsoluteFill>
+  );
+};
+
+/** Glitch-cut garnish: a few bright cyan/magenta tear bands + a white scan bar for ±3 frames around each cut (gradients only). */
+const TearBands: React.FC<{t: number; cuts: number[]}> = ({t, cuts}) => {
+  const c = cuts.find((k) => t >= k - 2 && t <= k + 3);
+  if (c === undefined) return null;
+  const d = t - c;
+  const I = Math.exp(-Math.abs(d) / 1.8);
+  return (
+    <AbsoluteFill style={{pointerEvents: 'none'}}>
+      {Array.from({length: 7}, (_, i) => {
+        const y = h01(c * 3 + i, d + 40) * 1080;
+        const h = 3 + h01(i, c + d) * 34;
+        const x = h01(i * 7, c + d * 3) * 900;
+        const w = 300 + h01(i * 3, d + c) * 1200;
+        const col = i % 3 === 0 ? 'rgba(255,255,255,0.55)' : i % 3 === 1 ? 'rgba(127,231,255,0.5)' : 'rgba(255,79,163,0.45)';
+        return <div key={i} style={{position: 'absolute', left: x, top: y, width: w, height: h, background: `linear-gradient(90deg, transparent, ${col} 25%, ${col} 75%, transparent)`, opacity: I}} />;
+      })}
+      <AbsoluteFill style={{background: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 5px)', opacity: I}} />
     </AbsoluteFill>
   );
 };

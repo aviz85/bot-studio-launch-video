@@ -132,7 +132,7 @@ export const shardState = (s: Shard, t: number) => {
 };
 
 /** The cloud of shards converging into the medallion (place inside an Obj at the medallion centre). */
-export const ShardCloud: React.FC<{t: number; glint?: number}> = ({t, glint = 1}) => (
+export const ShardCloud: React.FC<{t: number; glint?: number; fringe?: number}> = ({t, glint = 1, fringe = 0}) => (
   <>
     {SHARDS.map((s, i) => {
       const st = shardState(s, t);
@@ -152,6 +152,12 @@ export const ShardCloud: React.FC<{t: number; glint?: number}> = ({t, glint = 1}
           </div>
           {fl > 0.02 && (
             <svg width={s.bw} height={s.bh} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}>
+              {fringe > 0.02 && (
+                <>
+                  <polygon points={svgPts} transform={`translate(${(-5 * fringe).toFixed(2)} 0)`} fill="none" stroke={`rgba(255,60,170,${(0.8 * fringe).toFixed(3)})`} strokeWidth={3} strokeLinejoin="round" />
+                  <polygon points={svgPts} transform={`translate(${(5 * fringe).toFixed(2)} 0)`} fill="none" stroke={`rgba(60,230,255,${(0.8 * fringe).toFixed(3)})`} strokeWidth={3} strokeLinejoin="round" />
+                </>
+              )}
               <polygon points={svgPts} fill={`rgba(200,240,255,${(0.08 * clamp(fl * 1.6)).toFixed(3)})`} stroke={`rgba(235,250,255,${(0.95 * clamp(fl * 1.6)).toFixed(3)})`} strokeWidth={2.4} strokeLinejoin="round" />
             </svg>
           )}

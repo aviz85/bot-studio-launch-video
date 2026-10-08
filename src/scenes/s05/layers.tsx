@@ -137,8 +137,8 @@ export const GraphLight: React.FC<{cam: ResolvedCam; f: number; uid: string; tok
           const tap = (i: number) => Math.pow(Math.sin(Math.PI * clamp((run.s[i] - a) / Math.max(1, b - a))), 0.55);
           els.push(
             <g key={k} opacity={o}>
-              <path d={ribbon(run.pts, (i, p) => clamp(22 * p.sc, 2, 34) * tap(i))} fill={`rgba(${ca},${(0.32 * settle).toFixed(3)})`} />
-              <path d={ribbon(run.pts, (i, p) => clamp(6 * p.sc, 1.2, 10) * tap(i))} fill={`rgba(255,255,255,${Math.min(1, 0.9 * settle).toFixed(3)})`} />
+              <path d={ribbon(run.pts, (i, p) => clamp(22 * p.sc, 2, 18) * tap(i))} fill={`rgba(${ca},${(0.32 * settle).toFixed(3)})`} />
+              <path d={ribbon(run.pts, (i, p) => clamp(6 * p.sc, 1.2, 6) * tap(i))} fill={`rgba(255,255,255,${Math.min(1, 0.9 * settle).toFixed(3)})`} />
             </g>,
           );
           return;
@@ -191,8 +191,8 @@ export const GraphLight: React.FC<{cam: ResolvedCam; f: number; uid: string; tok
           const n = run.pts.length;
           els.push(
             <g key={`p${ei}-${k}-${ri}`} opacity={o}>
-              <path d={ribbon(run.pts, (i, p) => clamp(40 * p.sc, 4, 70) * (0.25 + 0.75 * (i / (n - 1))))} fill={`rgba(${ca},0.35)`} />
-              <path d={ribbon(run.pts, (i, p) => clamp(9 * p.sc, 1.6, 16) * (0.2 + 0.8 * (i / (n - 1))))} fill="#FFFFFF" />
+              <path d={ribbon(run.pts, (i, p) => clamp(30 * p.sc, 4, 30) * (0.35 + 0.65 * (i / (n - 1))))} fill={`rgba(${ca},0.35)`} />
+              <path d={ribbon(run.pts, (i, p) => clamp(8 * p.sc, 1.6, 8) * (0.3 + 0.7 * (i / (n - 1))))} fill="#FFFFFF" />
             </g>,
           );
         });
@@ -478,11 +478,14 @@ export const GraphOrbs: React.FC<{f: number; activeId?: string | null; nearFade?
       const rgb = e.kind === 'branch' ? COL.pist : COL.cyan;
       const pos: V3 = [m[0], m[1] - 70, m[2]];
       // keep chips legible: at least ~0.72× native size on screen
-      const d = cam ? project(cam, pos).depth : 0;
+      const q = cam ? project(cam, pos) : null;
+      const d = q ? q.depth : 0;
       const s = cam && d > 0 ? clamp((0.72 * d) / cam.persp, 1, 2.4) * labelScale : labelScale;
+      // keep the top-left HUD slot clean: chips fade as they drift into it
+      const hudBox = q ? clamp((820 - q.x) / 120) * clamp((260 - q.y) / 60) : 0;
       return (
         <Obj key={`lb${e.id}`} x={pos[0]} y={pos[1]} z={pos[2]} billboard s={s} nearFade={[80, 360]}>
-          <LabelChip text={e.label as string} rgb={rgb} p={p} />
+          <LabelChip text={e.label as string} rgb={rgb} p={p * (1 - hudBox)} />
         </Obj>
       );
     })}

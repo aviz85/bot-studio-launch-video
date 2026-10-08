@@ -33,10 +33,10 @@ import {
   World, Obj, FloorGrid, CamSpec, CamKey, V3, addCam, handheld, kickPush, camPath, camMotion, resolveCam, project, depthOf,
   MotionBlur, Shots, Shot, whip, zoomThrough, flashCut, glitchCut, cut, beatsToLocal, makeRamp, rackFocus,
 } from '../cine';
-import {LensFlare, Glint, LightStreak, Flash, DustField, HoloTunnel, SpeedLines} from '../vfx';
-import {SignalBars3D, TypedChip, Beam3D} from '../ui';
+import {LensFlare, Glint, LightStreak, DustField, HoloTunnel, SpeedLines} from '../vfx';
+import {SignalBars3D, TypedChip} from '../ui';
 import {Statement, HudLabel, GRAD_H, WordSpec} from './s02/type';
-import {BuildSky, CoreGlow, WarpBG, InwardMotes, ContractRing} from './s02/env';
+import {BuildSky, CoreGlow, WarpBG, InwardMotes, ContractRing, ScreenBeam} from './s02/env';
 import {CodeLine, DecisionPill, DecisionRow, ClerkCard, AvatarHalo, HoloOrb, HOLO, rv} from './s02/fragments';
 
 /* ------------------------------------------------------------------ */
@@ -63,6 +63,11 @@ const SHARDS: {p: V3; w: number; h: number; ry: number; rz: number; kind: number
   {p: [420, -1250, -6400], w: 240, h: 240, ry: -8, rz: -10, kind: 2},
   {p: [-380, -520, -1350 + L2.z], w: 260, h: 120, ry: 18, rz: 5, kind: 1},
   {p: [700, -420, 900 + L2.z], w: 230, h: 140, ry: -22, rz: -5, kind: 0},
+  // along the dive (SH4): pass close to the lens on both sides
+  {p: [-520, -700, L2.z - 2600], w: 300, h: 170, ry: 26, rz: -6, kind: 0},
+  {p: [560, -980, L2.z - 4200], w: 280, h: 140, ry: -24, rz: 5, kind: 1},
+  {p: [-430, -1250, L2.z - 6000], w: 260, h: 260, ry: 14, rz: 9, kind: 2},
+  {p: [470, -1500, L2.z - 7600], w: 320, h: 150, ry: -18, rz: -4, kind: 0},
 ];
 const Shard: React.FC<{w: number; h: number; kind: number; f: number; i: number}> = ({w, h, kind, f, i}) => (
   <div style={{width: w, height: h, borderRadius: 18, position: 'relative', overflow: 'hidden',
@@ -105,11 +110,11 @@ const LineObj: React.FC<{words: WordSpec[]; size: number; y: number; z: number; 
 );
 
 /** Montage frame: a fragment world over the warp background, motion blur, a light-streak bundle and tiny HUD labels. */
-type MontProps = {t: number; from: number; warpI: number; warpTravel: number; t0: number; cam: CamSpec; aperture?: number; focus?: number | V3; children: React.ReactNode; label: string; sub: string; vx?: number; vy?: number; streak?: {start: number; angle: number; color?: string; offset?: number}; tint?: string};
-const MontFrame: React.FC<MontProps> = ({t, from, warpI, warpTravel, t0, cam, aperture = 0, focus, children, label, sub, vx = 0, vy = 0, streak, tint}) => {
+type MontProps = {t: number; from: number; warpI: number; warpTravel: number; t0: number; cam: CamSpec; aperture?: number; focus?: number | V3; children: React.ReactNode; behind?: React.ReactNode; label: string; sub: string; vx?: number; vy?: number; streak?: {start: number; angle: number; color?: string; offset?: number}; tint?: string};
+const MontFrame: React.FC<MontProps> = ({t, from, warpI, warpTravel, t0, cam, aperture = 0, focus, children, behind, label, sub, vx = 0, vy = 0, streak, tint}) => {
     const body = (
       <AbsoluteFill>
-        <World camera={cam} aperture={aperture} focus={focus} backdrop={<WarpBG I={warpI} travel={warpTravel} frame={t} from={from} tint={tint} />}>
+        <World camera={cam} aperture={aperture} focus={focus} backdrop={<><WarpBG I={warpI} travel={warpTravel} frame={t} from={from} tint={tint} />{behind}</>}>
           {children}
         </World>
       </AbsoluteFill>
@@ -149,11 +154,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const warpTravel = (wb - wa) * (0.012 * wu + 0.11 * Math.pow(wu, 3) / 3) * 1 + t * 0.004;
 
   /* ---------------- build world ---------------- */
-  const buildWorld = ({cam, aperture = 0, focus, coreI, l2Fade, l1Fade, flare = 1, dust = 1}: {cam: CamSpec; aperture?: number; focus?: number | V3; coreI: number; lt: number; l2Fade?: [number, number]; l1Fade?: [number, number]; flare?: number; dust?: number}) => {
+  const buildWorld = ({cam, aperture = 0, focus, coreI, l2Fade, l1Fade, flare = 1, dust = 1, lights = 1, refl = 0.2}: {cam: CamSpec; aperture?: number; focus?: number | V3; coreI: number; lt: number; l2Fade?: [number, number]; l1Fade?: [number, number]; flare?: number; dust?: number; lights?: number; refl?: number}) => {
     const rc = resolveCam(cam);
     const cp = project(rc, CORE);
     return (
       <AbsoluteFill>
+        <AbsoluteFill style={{filter: lights < 1 ? `brightness(${lights.toFixed(3)})` : undefined}}>
         <World camera={rc} aperture={aperture} focus={focus}
           backdrop={<>
             <BuildSky from={from} floorY={FLOOR} />
@@ -165,10 +171,11 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
               <Shard w={s.w} h={s.h} kind={s.kind} f={f} i={i} />
             </Obj>
           ))}
-          <LineObj words={W1} size={L1.size} y={L1.y} z={L1.z} t={t} f={f} weight={800} nearFade={l1Fade} />
-          <LineObj words={W2} size={L2.size} y={L2.y} z={L2.z} t={t} f={f} weight={900} pulse={pulse} nearFade={l2Fade} />
+          <LineObj words={W1} size={L1.size} y={L1.y} z={L1.z} t={t} f={f} weight={800} nearFade={l1Fade} refl={refl} />
+          <LineObj words={W2} size={L2.size} y={L2.y} z={L2.z} t={t} f={f} weight={900} pulse={pulse} nearFade={l2Fade} refl={refl} />
         </World>
         <DustField count={110} camX={-rc.pos[0] * 0.15} camY={-rc.pos[1] * 0.15} boost={pulse * 0.8} frame={t} opacity={0.7 * dust} />
+        </AbsoluteFill>
         {cp.visible && flare > 0 && (
           <LensFlare x={cp.x} y={cp.y} intensity={(0.28 + 0.75 * pulse + 0.15 * band(f, 4)) * flare * coreI} scale={0.8} streak={0.9} ghosts={0.6} rays={10} ring={false} veil={0.35} frame={t} />
         )}
@@ -183,12 +190,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       {at: 60, pos: [-90, FLOOR - 34, 1060], roll: -1.2},
     ];
     const cam = addCam(camPath(lt, keys), handheld(lt, 0.6, 2), kickPush(f, 70, 10));
-    const lights = clamp(0.2 + lt / 5); // black → lit on the kick
-    return (
-      <AbsoluteFill style={{filter: lights < 1 ? `brightness(${lights.toFixed(3)})` : undefined}}>
-        {buildWorld({cam: cam, coreI: 0.9 + 0.9 * pulse, lt: lt})}
-      </AbsoluteFill>
-    );
+    const lights = clamp(0.06 + Math.pow(clamp(lt / 8), 1.5)); // the core ignites on the kick, the world exposes up after it
+    return buildWorld({cam: cam, coreI: 0.9 + 1.1 * pulse, lt: lt, lights: lights});
   };
 
   /* SH2 · high dutch lateral track */
@@ -219,10 +222,11 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const sh4At = (x: number): CamSpec => {
     const tau = r4.time(x);
     const keys: CamKey[] = [
-      {at: 0, pos: [340, FLOOR - 60, L2.z + 2000], lookAt: CORE, focal: 20, roll: 6},
-      {at: 30, pos: [120, -560, L2.z + 250], roll: 2},
-      {at: 64, pos: [0, -900, L2.z - 2000], roll: -3},
-      {at: 92, ease: 'expoIn', pos: [0, -2200, L2.z - 11000], roll: -8},
+      {at: 0, pos: [360, FLOOR - 50, L2.z + 2100], lookAt: [0, -100, L2.z - 4000], focal: 20, roll: 6},
+      {at: 30, pos: [150, -150, L2.z + 460], lookAt: [0, 40, L2.z - 3000], roll: 3},
+      {at: 46, pos: [90, -190, L2.z - 320], lookAt: [0, -500, L2.z - 5000], roll: 0},
+      {at: 64, pos: [0, -620, L2.z - 1800], lookAt: CORE, roll: -3},
+      {at: 92, ease: 'expoIn', pos: [0, -2000, L2.z - 11000], roll: -9},
     ];
     return camPath(tau, keys);
   };
@@ -231,9 +235,10 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const m = camMotion(sh4At, Math.max(0, lt));
     const end = clamp((lt - 34) / 20);
     const coreI = 1 + 0.9 * pulse + 3.2 * Math.pow(end, 2.2);
+    const mb = lt < 6 ? 0 : 0.6;
     return (
-      <MotionBlur vx={m.dx * 0.6} vy={m.dy * 0.6}>
-        {buildWorld({cam: cam, coreI: coreI, lt: lt, l2Fade: [80, 700], l1Fade: [80, 500], dust: 1 - end})}
+      <MotionBlur vx={m.dx * mb} vy={m.dy * mb}>
+        {buildWorld({cam: cam, coreI: coreI, lt: lt, l2Fade: [5, 40], l1Fade: [80, 500], dust: 1 - end, refl: 0})}
         <SpeedLines intensity={warpI} travel={warpTravel} count={260} glow={0.5} frame={t} />
       </MotionBlur>
     );
@@ -268,10 +273,10 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const cam = addCam(m2At(lt), handheld(lt, 1, 12));
     const m = camMotion(m2At, lt);
     return (
-      <MontFrame {...mc} cam={cam} aperture={8} focus={[0, 0, 0]} label="State · collect_details" sub="active · token arrived" vx={m.dx * 0.5} vy={m.dy * 0.5} streak={{start: L(25) - 2, angle: 172, color: 'violet', offset: 160}}>
-        {/* beams stop short of every orb plane: a ribbon crossing an orb's plane forces a BSP split (light square artefact) */}
-        <Obj x={0} y={0} z={0}><Beam3D a={[-60, 12, -90]} b={[-760, 158, -1030]} o={0.9} thick={3} pulse={(lt / 20) % 1} /></Obj>
-        <Obj x={0} y={0} z={0}><Beam3D a={[60, -15, -110]} b={[900, -218, -1700]} o={0.8} thick={3} color="205,187,255" pulse={((lt + 10) / 22) % 1} /></Obj>
+      <MontFrame {...mc} cam={cam} aperture={8} focus={[0, 0, 0]} behind={<>
+          <ScreenBeam a={[0, 0, 0]} b={[-820, 170, -1100]} pulse={(lt / 20) % 1} />
+          <ScreenBeam a={[0, 0, 0]} b={[950, -230, -1800]} color="205,187,255" o={0.85} pulse={((lt + 10) / 22) % 1} />
+        </>} label="State · collect_details" sub="active · token arrived" vx={m.dx * 0.5} vy={m.dy * 0.5} streak={{start: L(25) - 2, angle: 172, color: 'violet', offset: 160}}>
         <Obj x={-820} y={170} z={-1100} billboard><HoloOrb size={300} label="discover" icon="chat" tone="lilac" active={0.4} t={t} /></Obj>
         <Obj x={950} y={-230} z={-1800} billboard><HoloOrb size={300} label="booked" icon="calendar" tone="green" active={0.3} t={t} /></Obj>
         <Obj x={0} y={0} z={0} billboard><HoloOrb size={440} label="collect_details" icon="doc" tone="cyan" active={1} t={t * 1.6} p={0.4 + 0.6 * rv(lt, -2, 10)} /></Obj>
@@ -281,8 +286,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
 
   // M3 · policy code line, grazing track
   const m3At = (x: number) => camPath(x, [
-    {at: 0, pos: [-1550, -250, 760], lookAt: [-300, 0, 0], focal: 24, roll: 7},
-    {at: 30, ease: 'expoOut', pos: [-560, -150, 1180], lookAt: [180, 10, 0], roll: 3},
+    {at: 0, pos: [-1550, -250, 760], lookAt: [-480, 0, 0], focal: 24, roll: 7},
+    {at: 30, ease: 'expoOut', pos: [-560, -130, 1060], lookAt: [-10, 10, 0], roll: 3},
   ]);
   const m3 = (lt: number) => {
     const m = camMotion(m3At, lt);
@@ -348,13 +353,13 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 16, ease: 'cubicIn', pos: [-40, 20, 300], roll: 6},
   ]);
   const chips: [string, string, number, 'score' | 'noul' | 'choice', V3][] = [
-    ['enjoyment', '1.7', 0.91, 'score', [-330, -150, 1500]],
-    ['goal_clear', 'yes', 0.94, 'noul', [360, 110, 900]],
-    ['intent', 'booking', 0.88, 'choice', [-300, 190, 250]],
-    ['frustration', '0.12', 0.86, 'score', [300, -200, -500]],
+    ['enjoyment', '1.7', 0.91, 'score', [-430, -190, 1500]],
+    ['goal_clear', 'yes', 0.94, 'noul', [430, 170, 900]],
+    ['intent', 'booking', 0.88, 'choice', [-420, 260, 280]],
+    ['frustration', '0.12', 0.86, 'score', [380, -250, -480]],
   ];
   const m7 = (lt: number) => (
-    <MontFrame {...mc} cam={addCam(m7At(lt), handheld(lt, 1.4, 17))} label="Typed signals" sub="noul · score · choice" streak={{start: L(29) - 2, angle: 160, offset: -200}}>
+    <MontFrame {...mc} cam={addCam(m7At(lt), handheld(lt, 1.4, 17))} label="Typed signals" sub="noul · score · choice" streak={{start: L(29) - 2, angle: 162, offset: -460}}>
       {chips.map(([n, v, c, k, p], i) => (
         <Obj key={n} x={p[0]} y={p[1]} z={p[2]} billboard nearFade={[60, 500]}>
           <TypedChip name={n} value={v} conf={c} kind={k} look="holo" size={58} glow={0.9} pulse={0.4} />
@@ -432,9 +437,6 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   return (
     <AbsoluteFill style={{background: '#04020A'}}>
       <Shots shots={shots} t={t} />
-      {/* light pulse on the half-time kicks: bloom from the core direction */}
-      {t < L(24) && <Flash at={L(16)} dur={20} color="violet" max={0.22} bloom x={960} y={420} frame={t} />}
-      {t < L(24) && <Flash at={L(20)} dur={18} color="violet" max={0.18} bloom x={960} y={470} frame={t} />}
     </AbsoluteFill>
   );
 };

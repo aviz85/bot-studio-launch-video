@@ -18,13 +18,14 @@
  *  4  58.0–60.0  HERO DUTCH low angle from the other side (+10° roll)     whip → left          20mm, pitch +14
  *                           cycle follow_up→discover "needs more" arcs overhead 58→59,
  *                           dashed return human_handoff→discover 58.5→59.5, volumetric beams
- *  5  60.0–62.0  FLY A      zoom-through INTO the start orb → chase cam   zoomThrough          18mm free cam
- *                           behind the token: start→discover(61)→collect(62); per-hop speed
+ *  5  60.0–62.0  FLY A      flash → in-camera rocket dolly from far behind flashCut + dolly    18mm free cam
+ *                           the start orb into a chase cam behind the token:
+ *                           start→discover(61)→collect(62); per-hop speed
  *                           ramp (whip between orbs, slow-mo glide past them), speed lines,
  *                           reticle locks the active state, "Current state ▸ …"
- *  6  62.0–64.0  FLY B      through collect_details (cyan flash) → low    flashCut (cyan)      20mm free cam
- *                           side-track: follow_up(63) → booked(63.5) lock + flare burst,
- *                           push into booked → zoomThrough OUT (½) into s06 at 64
+ *  6  62.0–64.0  FLY B      whip past collect_details → low side-track:  whip → right         18mm free cam
+ *                           follow_up(63) → booked(63.5) lock, flare burst, god rays,
+ *                           floor shockwave; push into booked → flashCut OUT (½) into s06 at 64
  * Life: handheld + kickPush (GLOBAL f) on every shot; audio-reactive SpaceBackdrop.
  * ===================================================================================================== */
 import React from 'react';
@@ -89,8 +90,13 @@ const GraphView: React.FC<ViewProps> = ({cam, f, uid, aperture = 0, focus, token
   const hz = horizonY(rc);
   const topDown = smoothstep(-25, -60, rc.pitch);
   const body = (
-    <AbsoluteFill style={{overflow: 'hidden', background: '#04020A'}}>
-      <SpaceBackdrop frame={f} from={0} camX={clamp(-rc.yaw * 10, -420, 420)} camY={clamp(-rc.pitch * 2.5, -240, 240)} horizon={clamp(hz, -400, 1500)} haze={0.55 * (1 - topDown)} intensity={0.85} />
+    <AbsoluteFill>
+      {/* overscanned so transitions that scale a shot down (zoom-through landing) never reveal its edge */}
+      <div style={{position: 'absolute', left: -150, top: -85, width: 2220, height: 1250, background: '#04020A'}}>
+        <div style={{position: 'absolute', left: 150, top: 85, width: 1920, height: 1080, transform: 'scale(1.16)'}}>
+          <SpaceBackdrop frame={f} from={0} camX={clamp(-rc.yaw * 10, -420, 420)} camY={clamp(-rc.pitch * 2.5, -240, 240)} horizon={clamp((hz - 540) / 1.16 + 540, -400, 1500)} haze={0.55 * (1 - topDown)} intensity={0.85} />
+        </div>
+      </div>
       {under}
       <World camera={rc} aperture={aperture} focus={focus} backdrop={<GraphBack f={f} uid={uid} activeId={activeId} grid={grid} />}>
         <GraphOrbs f={f} activeId={activeId} />
@@ -218,7 +224,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
 
   const shots = beatShots(from, dur, [
     {
-      beat: 52, name: 'god', in: zoomThrough({dur: 16}),
+      beat: 52, name: 'god', in: zoomThrough({dur: 16, blur: 0}),
       render: (lt) => {
         const cam = addCam(camPath(lt, k1), ...life(lt, 0.6, 1));
         const rc = resolveCam(cam);
@@ -261,10 +267,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       },
     },
     {
-      beat: 60, name: 'fly-a', in: zoomThrough({dur: 16}),
+      beat: 60, name: 'fly-a', in: flashCut({dur: 10, split: 0.35, peak: 0.8, color: '#E6FBFF'}),
       render: (lt) => {
         const ff = f;
-        const cam = addCam(chaseCam(ff), handheld(lt, 0.9, 5), kickZoom(f, 0.012));
+        // in-camera zoom-through: the lens rockets in from far behind the start orb and settles into the chase
+        const rocket = 1 - Math.pow(1 - clamp(lt / 18), 4);
+        const cam = addCam(chaseCam(ff), {dolly: -1500 * (1 - rocket)}, handheld(lt, 0.9, 5), kickZoom(f, 0.012));
         const rc = resolveCam(cam);
         const ts = tokenS(ff);
         const spd = Math.abs(tokenS(ff) - tokenS(ff - 1));
@@ -273,7 +281,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const lock = orbRect(rc, st.id);
         return (
           <GraphView cam={rc} f={f} uid="s05e" activeId={st.id} token={{s: ts, trail: 520, I: 1}} grid={0.28}
-            under={<SpeedLines frame={f} intensity={clamp(spd / 40)} x={tq.visible ? tq.x : 960} y={tq.visible ? tq.y : 540} travel={f * 0.02 + ts / 300} count={220} />}
+            under={<SpeedLines frame={f} intensity={clamp(spd / 40 + 1.2 * (1 - rocket))} x={tq.visible ? tq.x : 960} y={tq.visible ? tq.y : 540} travel={f * 0.02 + ts / 300 + 6 * rocket} count={220} />}
             extra={<>
               {tq.visible && <LensFlare x={tq.x} y={tq.y} intensity={0.75} scale={0.6} ghosts={0.6} rays={10} frame={f} seed={7} />}
               {st.id !== 'start' && lock.ok && <LockReticle f={f} at={st.at} end={st.at + 16} x={lock.q.x} y={lock.q.y} r={lock.w / 2} label={`state ▸ ${st.id}`} value="ACTIVE" />}
@@ -282,7 +290,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       },
     },
     {
-      beat: 62, name: 'fly-b', in: flashCut({dur: 9, color: '#BFF4FF', peak: 0.8}), out: flashCut({dur: 14, split: 0.5, peak: 0.9, color: '#E6FBFF'}),
+      beat: 62, name: 'fly-b', in: whip({dir: 'right', dur: 10}), out: flashCut({dur: 14, split: 0.5, peak: 0.9, color: '#E6FBFF'}),
       render: (lt) => {
         const ff = f;
         const cam = addCam(sideCam(ff), handheld(lt, 0.8, 6), kickPush(f, 16, 7));

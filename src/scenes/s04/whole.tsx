@@ -6,7 +6,7 @@ import React from 'react';
 import {AbsoluteFill} from 'remotion';
 import {MONO, FONT, kick} from '../../lib';
 import {World, Obj, CamKey, addCam, handheld, kickPush, resolveCam, project, FloorGrid, V3, camPath} from '../../cine';
-import {DustField, LensFlare, Bokeh} from '../../vfx';
+import {DustField, LensFlare, Bokeh, SpeedLines} from '../../vfx';
 import {UITheme} from '../../ui/theme';
 import {GlassPane, TypedChip} from '../../ui/glass';
 import {Icon} from '../../ui/kit';
@@ -55,7 +55,7 @@ const Edges: React.FC<{draw: number; t: number}> = ({draw, t}) => {
               <path d={d} stroke="rgba(140,107,234,0.35)" strokeWidth={26} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={`${p} 1`} />
               <path d={d} stroke="url(#s04e)" strokeWidth={9} fill="none" strokeLinecap="round" pathLength={dash ? undefined : 1} strokeDasharray={dash ?? `${p} 1`} opacity={dash ? p : 1} />
               <path d={d} stroke="#FFFFFF" strokeWidth={3.5} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray={`${p} 1`} opacity={0.9} />
-              {p >= 1 && <path d={d} stroke="#FFFFFF" strokeWidth={9} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray="0.06 0.94" strokeDashoffset={-(((t * 0.03 + i * 0.27) % 1))} opacity={0.95} style={{filter: 'drop-shadow(0 0 8px #7FE7FF)'}} />}
+              {p >= 1 && <path d={d} stroke="#FFFFFF" strokeWidth={9} fill="none" strokeLinecap="round" pathLength={1} strokeDasharray="0.06 0.94" strokeDashoffset={-(((t * 0.03 + i * 0.27) % 1))} opacity={0.95} />}
             </g>
           );
         })}
@@ -92,16 +92,16 @@ const WholeSet: React.FC<{lt: number; t: number; f: number; e: number}> = ({lt, 
       </Obj>
       {/* the Build with AI page, exploded frost glass */}
       <Obj x={PAGE[0]} y={PAGE[1]} z={PAGE[2]} ry={-18}>
-        <GlassPane look="frost" tint="frame" w={1000} h={960} radius={40} glow={0.4} preserve3d padding={30}>
+        <GlassPane look="frost" tint="frame" w={1000} h={960} radius={40} preserve3d padding={30}>
           <UITheme look="frost">
             <BuildMain t={400} e={e} typeAt={0} pressAt={60} proposalAt={80} />
           </UITheme>
         </GlassPane>
       </Obj>
       {/* the generated bot: orbs + light trails */}
-      <Edges draw={pr(lt, 6, 20)} t={t} />
+      <Edges draw={pr(lt, 4, 20)} t={t} />
       {NODES.map((n, i) => {
-        const p = pr(lt, 2 + i * 3, 14);
+        const p = pr(lt, i * 2, 11);
         if (p <= 0) return null;
         return (
           <Obj key={n.id} x={n.p[0]} y={n.p[1] + 14 * Math.sin((t + i * 21) / 22)} z={GZ + 40} billboard>
@@ -111,7 +111,7 @@ const WholeSet: React.FC<{lt: number; t: number; f: number; e: number}> = ({lt, 
         );
       })}
       {PIECES.map((pc, i) => {
-        const p = easeOutExpo(pr(lt, 6 + i * 2, 16));
+        const p = easeOutExpo(pr(lt, 4 + i * 2, 16));
         if (p <= 0) return null;
         // fly up from the page into orbit
         const from: V3 = [PAGE[0] - 200, PAGE[1] - 100, PAGE[2] + 200];
@@ -132,7 +132,7 @@ const WholeSet: React.FC<{lt: number; t: number; f: number; e: number}> = ({lt, 
 /** fast pull-back (expo out) → slow glide → accelerate into the orb (expo in): fast–slow–fast */
 const KEYS: CamKey[] = [
   {at: 0, target: [PAGE[0] - 80, PAGE[1] - 60, PAGE[2]], yaw: -24, pitch: -13, roll: -5, dist: 1750, focal: 28},
-  {at: 20, ease: 'expoOut', target: [150, -190, 40], yaw: -11, pitch: -4, roll: -2, dist: 3050},
+  {at: 20, ease: 'cubicOut', target: [150, -190, 40], yaw: -11, pitch: -4, roll: -2, dist: 3050},
   {at: 38, ease: 'linear', target: [180, -210, 60], yaw: -7, pitch: -3, roll: -1, dist: 2920},
   {at: 54, ease: 'cubicIn', target: ORB_TARGET, yaw: -4, pitch: -2, roll: 3, dist: 520, focal: 30},
 ];
@@ -144,6 +144,7 @@ export const WholeShot: React.FC<{lt: number; t: number; from: number}> = ({lt, 
   const rc = resolveCam(cam);
   const e = 1.4 - 0.7 * easeOutExpo(pr(lt, 0, 30));
   const fl = project(rc, [NODES[3].p[0] + 90, NODES[3].p[1] - 90, GZ + 80]);
+  const op = project(rc, ORB_TARGET);
   return (
     <AbsoluteFill style={{overflow: 'hidden'}}>
       <Sky cam={cam} from={from} t={t} haze={0.5} />
@@ -152,9 +153,14 @@ export const WholeShot: React.FC<{lt: number; t: number; from: number}> = ({lt, 
       </World>
       {fl.visible && <LensFlare x={fl.x} y={fl.y} intensity={0.4 + 0.2 * kick(f, 10)} scale={0.6} streak={0.9} frame={t} />}
       <DustField frame={t} count={80} camX={-tau * 4} boost={kick(f) * 0.5} />
+      {lt > 40 && <SpeedLines x={op.x} y={op.y} intensity={Math.pow(pr(lt, 40, 14), 1.6) * 1.2} travel={Math.pow(pr(lt, 38, 16), 2.2) * 5} count={260} frame={t} />}
       <Bokeh frame={t} count={12} focus={0.05} opacity={0.5} camX={-tau * 6} />
       <Copy words={['Get', 'a', 'whole', 'bot.']} t={lt - 8} out={lt - 41} x={124} y={786} size={140} accent={[3]} kicker="Step 2 · Proposal → Bot" />
-      <HudTag x={1770} y={150} t={lt - 10} align="right" label="Bot assembled" value="4 states · 6 judgments · 5 policies" />
+      {lt < 44 && (
+        <div style={{position: 'absolute', inset: 0, opacity: 1 - pr(lt, 37, 6)}}>
+          <HudTag x={1770} y={150} t={lt - 10} align="right" label="Bot assembled" value="4 states · 6 judgments · 5 policies" />
+        </div>
+      )}
     </AbsoluteFill>
   );
 };

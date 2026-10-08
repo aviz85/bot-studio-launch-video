@@ -147,7 +147,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     return (
       <AbsoluteFill style={{background: '#020106'}}>
         <World camera={cam} backdrop={<SpaceBackdrop from={from} intensity={0.22} stars={90} haze={0} audio={0.3} />}>
-          <Obj x={0} y={-150} z={0} ry={-7} rx={4} w={620} h={380}><OldChat t={lt} off={L(99)} /></Obj>
+          <Obj x={0} y={-195} z={0} ry={-7} rx={4} w={620} h={380}><OldChat t={lt} off={L(99)} /></Obj>
         </World>
         {beam(on * dying, pw.x)}
         <Bokeh count={18} focus={0.95} opacity={0.35 * on} camX={-lt * 0.6} />
@@ -221,6 +221,15 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   /* ======================= PART B ======================= */
   const life = (lt: number, amp = 0.6, seed = 1, push = 22): CamSpec[] => [handheld(lt, amp, seed), kickPush(f, push), kickZoom(f, 0.012)] as CamSpec[];
   const DROP = L(104);
+  const keyLight = () => {
+    const k = kick(f, 10);
+    return (
+      <>
+        <AbsoluteFill style={{background: `radial-gradient(55% 60% at 100% 0%, rgba(150,236,255,${(0.13 + 0.12 * k).toFixed(3)}) 0%, rgba(140,107,234,${(0.08 + 0.06 * k).toFixed(3)}) 40%, transparent 75%)`, pointerEvents: 'none'}} />
+        <AbsoluteFill style={{background: 'radial-gradient(90% 80% at 50% 45%, transparent 55%, rgba(3,1,8,0.55) 100%)', pointerEvents: 'none'}} />
+      </>
+    );
+  };
 
   // B1 — drop: low-angle hero track along the Signal Wall
   const B1 = (lt: number) => {
@@ -373,7 +382,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <World camera={cam} focus={focusD} aperture={16} maxBlur={16} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
-            <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{speaker: 2}} skip={['side', 'top', 'base', 'mainPane']} flyRows />
+            <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{speaker: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'decisions']} flyRows />
             {chips.filter((c) => c.u > 0 && c.u < 1).map((c) => (
               <Obj key={c.i} x={c.p[0]} y={c.p[1]} z={c.p[2]} ry={c.tilt} w={299 * 2} h={35 * 2} s={0.5} nearFade={[40, 200]}>
                 <div style={{zoom: 2}}><PromptChip i={c.i} glow={c.u} /></div>
@@ -382,6 +391,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
           </UITheme>
         </World>
         <DustField camX={-lt * 2} boost={kick(f) * 0.5} count={90} seed={10} focus={0.4} />
+        {keyLight()}
       </AbsoluteFill>
     );
   };
@@ -404,12 +414,13 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <World camera={cam} focus={fd} aperture={9} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
-            <DashRig t={lt + L(114)} f={f} E={E} times={TIMES} crisp={{decisions: 2, clerk: 2}} skip={['side', 'top', 'base', 'mainPane']} />
+            <DashRig t={lt + L(114)} f={f} E={E} times={TIMES} crisp={{decisions: 2, clerk: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'title']} />
           </UITheme>
         </World>
         <Glint x={pg.x} y={pg.y} size={260} intensity={1.8 * impulse(t, TIMES.decisions[0], 1, 10)} color="pistachio" />
         <LensFlare x={pg.x} y={pg.y} intensity={1.1 * impulse(t, TIMES.decisions[0], 1, 16)} scale={0.5} ghosts={0.4} rays={0} ring={false} color="#9FF5D0" secondary="#45E3B0" />
         <DustField camX={-lt * 2} boost={kick(f) * 0.5} count={90} seed={11} focus={0.4} />
+        {keyLight()}
       </AbsoluteFill>
     );
   };
@@ -432,11 +443,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <World camera={cam} focus={[mx(mix(0.08, 0.88, follow)), ly, tl[2]]} aperture={10} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.35} />}>
           <UITheme look="frost">
-            <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{timeline: 2}} skip={['side', 'top', 'base', 'mainPane']} />
+            <DashRig t={tt} f={f} E={E} times={TIMES} crisp={{timeline: 2}} skip={['side', 'top', 'base', 'mainPane', 'title', 'speaker']} />
           </UITheme>
         </World>
         {rr && <Lock t={t} x={rr.x} y={rr.y} w={rr.w} h={rr.h} start={L(117.75) + 2} dur={10} label="Last token" value="1,240 ms · traced" side="left" />}
         <DustField camX={-lt * 3} boost={kick(f) * 0.5} count={90} seed={12} focus={0.4} />
+        {keyLight()}
       </AbsoluteFill>
     );
   };
@@ -451,7 +463,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const keys: CamKey[] = [
       {at: -6, target: [bub[0] - 30, bub[1] - 40, bub[2]], yaw: 26, pitch: -4, dist: 1400, roll: 8, focal: 50, shiftX: 260, shiftY: -310, zoom: 1.18},
       {at: 40, ease: 'sine', yaw: 18, pitch: -2, dist: 1300, roll: 7, zoom: 1.26},
-      {at: 62, ease: 'expoIn', target: [bub[0], bub[1] - 20, bub[2]], yaw: 8, dist: 950, roll: 3, shiftX: 140, shiftY: -160, zoom: 1.4},
+      {at: 66, ease: 'expoIn', target: [bub[0] - 10, bub[1] - 10, bub[2]], yaw: 6, dist: 820, roll: 2, shiftX: 60, shiftY: -60, zoom: 1.55},
     ];
     const at = (x: number) => addCam(camPath(r8.time(x), keys), handheld(x, 0.35, 9), kickPush(f, 10));
     const cam = at(lt);
@@ -461,11 +473,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <World camera={cam} focus={bub} aperture={8} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
-            <DashRig t={tUI} f={f} E={E} times={TIMES} crisp={{chat: 2}} skip={['side', 'top', 'title', 'base', 'mainPane']} />
+            <DashRig t={tUI} f={f} E={E} times={TIMES} crisp={{chat: 2}} skip={['side', 'top', 'title', 'base', 'mainPane', 'speaker', 'sig']} />
           </UITheme>
         </World>
         {rb && <Lock t={t} x={rb.x} y={rb.y} w={rb.w} h={rb.h} start={L(119)} dur={10} label="User · turn 9" value="🔥 reacted · 0 ms" />}
         <DustField camX={-tau * 2} boost={kick(f) * 0.5} count={90} seed={13} focus={0.4} />
+        {keyLight()}
       </AbsoluteFill>
     );
   };
@@ -480,8 +493,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 110, name: 'B4 snap', in: glitchCut({dur: 8, slices: false, seed: 4}), render: B4},
     {beat: 112, name: 'B5 speaker', in: whip({dir: 'left', dur: 10}), render: B5},
     {beat: 114, name: 'B6 decisions', in: flashCut({dur: 8, peak: 0.6}), render: B6},
-    {beat: 116, name: 'B7 timeline', in: spinBlur({dur: 12, angle: 60, dir: -1, blur: 0.7}), render: B7},
-    {beat: 118, name: 'B8 chat', in: whip({dir: 'right', dur: 10}), out: zoomThrough({dur: 16}), render: B8},
+    {beat: 116, name: 'B7 timeline', in: spinBlur({dur: 12, angle: 60, dir: -1, blur: 0.5}), render: B7},
+    {beat: 118, name: 'B8 chat', in: whip({dir: 'right', dur: 10}), out: zoomThrough({dur: 14, depth: 1.9, blur: 0}), render: B8},
   ]);
 
   /* ---------- scene-level overlays: copy, HUD, white-out ---------- */

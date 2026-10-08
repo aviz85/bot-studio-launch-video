@@ -340,28 +340,29 @@
   {
    "frame": 1612,
    "sfx": "swoosh_rev",
-   "gain_db": -10,
+   "gain_db": -11,
    "pan": 0,
    "params": {
-    "dur": 0.7,
+    "dur": 0.45,
     "brightness": 0.6,
     "seed": 1
    },
-   "note": "zoom-through into the start orb"
+   "note": "inhale into the flash cut"
   },
   {
    "frame": 1612,
    "sfx": "whoosh",
-   "gain_db": -12,
+   "gain_db": -10,
    "pan": 0,
    "params": {
     "dur": 0.6,
     "direction": "none",
-    "peak": 0.2,
-    "pitch": 1.2,
+    "peak": 0.25,
+    "pitch": 1.3,
+    "weight": 0.5,
     "seed": 8
    },
-   "note": "emerge behind the token"
+   "note": "lens rockets in behind the start orb"
   },
   {
    "frame": 1614,
@@ -415,27 +416,28 @@
   },
   {
    "frame": 1666,
-   "sfx": "swoosh_rev",
-   "gain_db": -11,
+   "sfx": "whip",
+   "gain_db": -9,
    "pan": 0,
    "params": {
-    "dur": 0.45,
-    "seed": 2
+    "direction": "rl",
+    "seed": 3,
+    "pitch": 0.95
    },
-   "note": "into the collect_details orb"
+   "note": "whip past collect_details into the side-track"
   },
   {
    "frame": 1666,
    "sfx": "stamp",
-   "gain_db": -7,
+   "gain_db": -9,
    "pan": 0,
    "params": {
     "weight": 0.3,
-    "clack": 1.45,
+    "clack": 1.4,
     "ring": 0.6,
     "seed": 1
    },
-   "note": "cyan flash cut through the orb"
+   "note": "new shot slams in"
   },
   {
    "frame": 1667,

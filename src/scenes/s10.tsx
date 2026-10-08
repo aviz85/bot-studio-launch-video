@@ -148,11 +148,11 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       name: 'A3 multiply', from: lb(144), to: lb(146), in: flashCut({dur: 8, peak: 0.55}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const at = (x: number) => camPath(A3_RAMP.time(x), A3_KEYS);
         const m = camMotion(at, lt, [0, 0, 0]);
         const cam = addCam(at(lt), handheld(lt, 0.6, 4), kickZoom(f, 0.02));
-        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4500, 12000], sparkle: 170}} mb={{vx: m.dx, vy: m.dy}} glint={0.25} rays={0.2} />;
+        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4500, 12000], sparkle: 170}} mb={info.tin || info.tout ? undefined : {vx: m.dx, vy: m.dy}} glint={0.25} rays={0.2} />;
       },
     },
     {
@@ -170,11 +170,11 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       name: 'A5 infinite', from: lb(148), to: lb(150.5), in: zoomThrough({dur: 14, depth: 2.6}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const at = (x: number) => camPath(A5_RAMP.time(x), A5_KEYS);
         const m = camMotion(at, lt, [0, 0, 0]);
-        const cam = addCam(at(lt), handheld(lt, 0.5, 6));
-        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [6500, 14500], sweeps: [[lb(150) - 20, -420]], sparkle: 200}} mb={{vx: m.dx, vy: m.dy}} glint={0.3} rays={0.25} />;
+        const cam = addCam(at(lt), handheld(lt, 0.5, 6), kickZoom(f, 0.015));
+        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [6500, 14500], sweeps: [[lb(150) - 20, -420]], sparkle: 200}} mb={info.tin || info.tout ? undefined : {vx: m.dx, vy: m.dy}} glint={0.3} rays={0.25} />;
       },
     },
     {
@@ -209,7 +209,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   MONTAGE.forEach((m, i) => {
     const s = lb(m.beat);
     const e = i < MONTAGE.length - 1 ? lb(MONTAGE[i + 1].beat) : HIT;
-    shots.push({name: `M${i + 1} ${m.design}`, from: s, to: e, in: MT[i], render: (lt) => <MontageShot m={m} lt={lt} t={t} f={f} from={from} idx={i} />});
+    shots.push({name: `M${i + 1} ${m.design}`, from: s, to: e, in: MT[i], render: (lt, _p, info) => <MontageShot m={m} lt={lt} t={t} f={f} from={from} idx={i} mbOff={!!(info.tin || info.tout)} />});
   });
 
   // C · final hit + end card

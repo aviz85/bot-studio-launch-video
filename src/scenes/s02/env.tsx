@@ -124,3 +124,30 @@ export const ContractRing: React.FC<{p: number; x?: number; y?: number; r0?: num
     <AbsoluteFill style={{mixBlendMode: 'screen', pointerEvents: 'none', background: `radial-gradient(circle at ${x}px ${y}px, transparent ${Math.max(0, r - 90).toFixed(1)}px, rgba(140,107,234,${(0.35 * a).toFixed(3)}) ${Math.max(0, r - 24).toFixed(1)}px, rgba(220,250,255,${(0.9 * a).toFixed(3)}) ${r.toFixed(1)}px, rgba(127,231,255,${(0.4 * a).toFixed(3)}) ${(r + 6).toFixed(1)}px, transparent ${(r + 30).toFixed(1)}px)`}} />
   );
 };
+
+/** Light beam between two world points, drawn in screen space (World backdrop layer → always behind 3D objects).
+ *  Replaces ui/Beam3D here: its crossed 3D ribbons triggered a 3D-sorting artefact that clipped the whole World. */
+export const ScreenBeam: React.FC<{a: V3; b: V3; color?: string; o?: number; thick?: number; pulse?: number}> = ({a, b, color = '127,231,255', o = 1, thick = 3, pulse}) => {
+  const c = useCam();
+  if (!c) return null;
+  const A = rawProject(c, a), Bp = rawProject(c, b);
+  if (A.depth <= 10 || Bp.depth <= 10) return null;
+  const id = `sb${Math.round(A.x)}_${Math.round(Bp.x)}_${color.replace(/,/g, '')}`;
+  const px = pulse !== undefined ? A.x + (Bp.x - A.x) * pulse : 0, py = pulse !== undefined ? A.y + (Bp.y - A.y) * pulse : 0;
+  const pr = pulse !== undefined ? 6 + 14 * (A.s + (Bp.s - A.s) * pulse) : 0;
+  return (
+    <svg width={FRAME_W} height={FRAME_H} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}} aria-hidden>
+      <defs>
+        <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={A.x} y1={A.y} x2={Bp.x} y2={Bp.y}>
+          <stop offset="0" stopColor={`rgb(${color})`} stopOpacity={0.9 * o} />
+          <stop offset="1" stopColor={`rgb(${color})`} stopOpacity={0.15 * o} />
+        </linearGradient>
+      </defs>
+      <line x1={A.x} y1={A.y} x2={Bp.x} y2={Bp.y} stroke={`url(#${id})`} strokeWidth={thick * 4} strokeLinecap="round" opacity={0.25} />
+      <line x1={A.x} y1={A.y} x2={Bp.x} y2={Bp.y} stroke={`url(#${id})`} strokeWidth={thick * 1.6} strokeLinecap="round" opacity={0.6} />
+      <line x1={A.x} y1={A.y} x2={Bp.x} y2={Bp.y} stroke="#FFFFFF" strokeWidth={thick * 0.6} strokeLinecap="round" opacity={0.7 * o} />
+      {pulse !== undefined && pulse > 0 && pulse < 1 && <circle cx={px} cy={py} r={pr} fill={`rgba(${color},${0.55 * o})`} />}
+      {pulse !== undefined && pulse > 0 && pulse < 1 && <circle cx={px} cy={py} r={pr * 0.4} fill="#FFFFFF" opacity={0.95 * o} />}
+    </svg>
+  );
+};

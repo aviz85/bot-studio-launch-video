@@ -43,7 +43,7 @@ const FLOOR = 520;
 const MCY = FLOOR - MH / 2 - 4;
 type Slot = {pos: V3; ry: number; off: V3};
 const SLOT: Record<string, Slot> = {
-  judge: {pos: [-660, MCY, -380], ry: 32, off: [-1500, -180, -2700]},
+  judge: {pos: [-660, MCY, -380], ry: 32, off: [-1100, -140, -2000]},
   speaker: {pos: [0, MCY, -700], ry: 0, off: [1900, -320, -5200]},
   clerk: {pos: [660, MCY, -380], ry: -32, off: [700, -1500, -3000]},
 };
@@ -58,7 +58,7 @@ const timing = (from: number) => {
     start: {judge: L(64), speaker: L(66), clerk: L(68)} as Record<string, number>,
     coreIn: L(69) - 2, charge0: L(69.25), fire: L(70), ignite: L(70.25),
     // part B
-    seg0: L(72), seg1: L(72.25),
+    seg0: L(72) + 3, seg1: L(72.25) + 1,
     critLaunch: [L(73), L(74), L(75)], critLand: [L(73.25), L(74.25), L(75.25)],
     measureOn: L(75.5), fill0: L(76), fill1: L(76.75),
     chipLaunch: [L(77), L(77.5), L(78), L(78.5)], chipLand: [L(77.25), L(77.75), L(78.25), L(78.75)],
@@ -113,33 +113,36 @@ const FloorPools: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) =
   return <AbsoluteFill>{pools}</AbsoluteFill>;
 };
 
-/** Comet trails behind monoliths while they fly in (projected, gradient strokes). */
+/** Speed streaks from the monolith corners while they fly in (projected, gradient strokes). */
 const Trails: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => {
   const rc = resolveCam(cam);
   const segs: React.ReactNode[] = [];
   for (const r of ROLES) {
     const st = tm.start[r.key], ld = tm.land[r.key];
-    if (t < st || t > ld + 2) continue;
+    if (t < st || t > ld + 3) continue;
     const s = SLOT[r.key];
-    const now = add3(s.pos, slam(Math.min(t, ld), st, ld, s.off, 0));
-    const back = add3(s.pos, slam(Math.max(st, Math.min(t, ld) - 3.2), st, ld, s.off, 0) ?? s.off);
-    const a = project(rc, now), b = project(rc, back);
-    if (!a.visible || !b.visible) continue;
-    const fade = t > ld ? 1 - (t - ld) / 2 : 1;
-    const w = Math.max(6, Math.min(420, MW * a.scale * 0.55));
-    segs.push(
-      <g key={r.key} opacity={fade}>
-        <defs>
-          <linearGradient id={`s06t-${r.key}`} gradientUnits="userSpaceOnUse" x1={b.x} y1={b.y} x2={a.x} y2={a.y}>
-            <stop offset="0" stopColor={r.col} stopOpacity={0} />
-            <stop offset="0.7" stopColor={r.col} stopOpacity={0.45} />
-            <stop offset="1" stopColor="#FFFFFF" stopOpacity={0.8} />
-          </linearGradient>
-        </defs>
-        <line x1={b.x} y1={b.y} x2={a.x} y2={a.y} stroke={`url(#s06t-${r.key})`} strokeWidth={w} strokeLinecap="round" />
-        <line x1={b.x} y1={b.y} x2={a.x} y2={a.y} stroke={`url(#s06t-${r.key})`} strokeWidth={w * 0.25} strokeLinecap="round" />
-      </g>,
-    );
+    const tn = Math.min(t, ld);
+    const now = add3(s.pos, slam(tn, st, ld, s.off, 0));
+    const back = add3(s.pos, slam(Math.max(st, tn - 4), st, ld, s.off, 0) ?? s.off);
+    const fade = t > ld ? 1 - (t - ld) / 3 : 1;
+    [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, -0.6], [0, 0.4]].forEach(([cx, cy], k) => {
+      const a = project(rc, onPane(now, s.ry, (cx * MW) / 2, (cy * MH) / 2));
+      const b = project(rc, onPane(back, s.ry, (cx * MW) / 2, (cy * MH) / 2));
+      if (!a.visible || !b.visible) return;
+      const id = `s06t-${r.key}-${k}`;
+      segs.push(
+        <g key={id} opacity={fade}>
+          <defs>
+            <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={b.x} y1={b.y} x2={a.x} y2={a.y}>
+              <stop offset="0" stopColor={r.col} stopOpacity={0} />
+              <stop offset="0.75" stopColor={r.col} stopOpacity={0.6} />
+              <stop offset="1" stopColor="#FFFFFF" stopOpacity={0.95} />
+            </linearGradient>
+          </defs>
+          <line x1={b.x} y1={b.y} x2={a.x} y2={a.y} stroke={`url(#${id})`} strokeWidth={k > 3 ? 10 : 4} strokeLinecap="round" />
+        </g>,
+      );
+    });
   }
   if (!segs.length) return null;
   return <svg width={1920} height={1080} style={{position: 'absolute', left: 0, top: 0, overflow: 'visible', mixBlendMode: 'screen'}}>{segs}</svg>;
@@ -196,7 +199,7 @@ const Beams: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => {
 };
 
 /** Screen-space impact effects for the monolith landings and the core ignition (each returns null outside its window). */
-const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => {
+const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm; lite?: boolean}> = ({cam, t, tm, lite}) => {
   const rc = resolveCam(cam);
   const out: React.ReactNode[] = [];
   for (const r of ROLES) {
@@ -222,11 +225,11 @@ const ImpactFx: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => 
     const c = project(rc, CORE);
     if (c.visible) {
       const g = pr(t, tm.ignite, 24, EZ.expoOut);
-      out.push(<GodRays key="gr" x={c.x} y={c.y} intensity={0.25 + 0.65 * g + 0.4 * imp(t, tm.ignite, 10)} length={1400} lobes={18} color="lilac" secondary="cyan" core={0.6} dust={0.8} />);
+      if (!lite) out.push(<GodRays key="gr" x={c.x} y={c.y} intensity={0.25 + 0.65 * g + 0.4 * imp(t, tm.ignite, 10)} length={1400} lobes={18} color="lilac" secondary="cyan" core={0.6} dust={0.8} />);
       out.push(<Shockwave key="csw" x={c.x} y={c.y} at={tm.ignite} dur={40} radius={1300} rings={3} distort thickness={110} intensity={1} />);
       out.push(<EnergyBurst key="ceb" x={c.x} y={c.y} at={tm.ignite} dur={50} count={160} distance={780} />);
-      out.push(<FlareBurst key="cfb" x={c.x} y={c.y} at={tm.ignite} dur={70} peak={2} sustain={0.55} flash={0.45} scale={1} seed={11} />);
-      out.push(<Flash key="cfl" at={tm.ignite} dur={12} color="white" max={0.5} bloom x={c.x} y={c.y} />);
+      out.push(<FlareBurst key="cfb" x={c.x} y={c.y} at={tm.ignite} dur={70} peak={2} sustain={0.55} flash={0.25} scale={1} seed={11} />);
+      out.push(<Flash key="cfl" at={tm.ignite} dur={10} color="white" max={0.3} bloom x={c.x} y={c.y} />);
     }
   }
   return <>{out}</>;
@@ -256,7 +259,7 @@ const RoleTags: React.FC<{cam: CamSpec; t: number; tm: Tm}> = ({cam, t, tm}) => 
 };
 
 /** Full Part A frame for a camera. */
-const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; tags?: boolean; reflect?: number}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, tags = true, reflect = 0.22}) => {
+const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; tags?: boolean; reflect?: number; lite?: boolean}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, tags = true, reflect = 0.22, lite}) => {
   const rc = resolveCam(cam);
   const charge = pr(t, tm.charge0, tm.fire - tm.charge0, EZ.sine);
   const fire = pr(t, tm.fire, 8, EZ.expoOut);
@@ -273,7 +276,7 @@ const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
         const fl = imp(t, tm.land[r.key], 7) + 0.8 * imp(t, tm.fire, 8);
         return (
           <Obj key={r.key} x={p[0]} y={p[1]} z={p[2]} ry={s.ry} w={MW} h={MH} nearFade={[60, 360]}>
-            <Monolith role={r} t={t} f={f} land={tm.land[r.key]} charge={charge} fire={fire} flash={Math.min(1, fl)} reflect={reflect} />
+            <Monolith role={r} t={t} f={f} land={tm.land[r.key]} charge={charge} fire={fire} flash={Math.min(1, fl)} reflect={lite ? 0 : reflect} />
           </Obj>
         );
       })}
@@ -290,11 +293,13 @@ const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
   return (
     <AbsoluteFill style={{overflow: 'hidden'}}>
       <SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} horizon={560} haze={0.45} intensity={0.72} />
-      {mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
+      {!lite && mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
       <Trails cam={cam} t={t} tm={tm} />
       <Beams cam={cam} t={t} tm={tm} />
-      <ImpactFx cam={cam} t={t} tm={tm} />
-      <DustField camX={-rc.yaw * 30} camY={rc.pitch * 20} boost={0.4 * imp(t, tm.ignite, 12)} />
+      {!lite && <ImpactFx cam={cam} t={t} tm={tm} />}
+      {lite && (() => { const c = project(rc, CORE); return c.visible ? <LensFlare x={c.x} y={c.y} intensity={1.1} scale={0.9} ghosts={0.4} rays={10} seed={11} /> : null; })()}
+      {t >= tm.coreIn && t < tm.ignite + 2 && (() => { const c = project(rc, CORE); return c.visible ? <Glint x={c.x} y={c.y} size={160 + 260 * charge} intensity={0.5 + 1.3 * charge + 1.2 * imp(t, tm.coreIn + 4, 8)} color="cyan" spin={1.2} /> : null; })()}
+      {!lite && <DustField camX={-rc.yaw * 30} camY={rc.pitch * 20} boost={0.4 * imp(t, tm.ignite, 12)} />}
       {tags && <RoleTags cam={cam} t={t} tm={tm} />}
     </AbsoluteFill>
   );
@@ -304,7 +309,7 @@ const PartA: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
 /* Part B world                                                         */
 /* ------------------------------------------------------------------ */
 const edState = (t: number, tm: Tm): EdState => {
-  const seg = t < tm.seg0 ? 0 : EZ.backOut(clamp01((t - tm.seg0) / (tm.seg1 - tm.seg0 + 3)));
+  const seg = t < tm.seg0 ? 0 : EZ.backOut(clamp01((t - tm.seg0) / (tm.seg1 - tm.seg0 + 2)));
   const fillP = pr(t, tm.fill0, tm.fill1 - tm.fill0, EZ.expoOut);
   const sw = (a: number, d: number) => { const u = (t - a) / d; return u > 0 && u < 1 ? u : -1; };
   const s1 = sw(tm.seg1, 34), s2 = sw(tm.fill1, 30);
@@ -322,7 +327,7 @@ const edState = (t: number, tm: Tm): EdState => {
 
 const CARD_C: V3 = [0, -40, 0];
 
-const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; reticle?: boolean; barFlare?: boolean}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, reticle, barFlare}) => {
+const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm; focus?: number | V3; aperture?: number; mb?: {vx: number; vy: number}; reticle?: boolean; barFlare?: boolean; lite?: boolean; bleed?: boolean}> = ({cam, t, f, from, tm, focus, aperture = 0, mb, reticle, barFlare, lite, bleed}) => {
   const rc = resolveCam(cam);
   const st = edState(t, tm);
   const kv = kick(f, 8);
@@ -347,8 +352,9 @@ const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
   const head = barFlare && st.measure > 0.5 ? project(rc, rowPt('measure', -460 + 920 * (st.val / 2), 15)) : null;
   const segP = project(rc, rowPt('type', 0, 14));
   return (
-    <AbsoluteFill style={{overflow: 'hidden'}}>
-      <SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} haze={0} intensity={0.6} seed={7} />
+    <AbsoluteFill style={{overflow: bleed ? 'visible' : 'hidden'}}>
+      {/* bleed: oversize the backdrop while a zoom-through scales this shot below 1 (no black frame edges) */}
+      <AbsoluteFill style={{transform: bleed ? 'scale(1.9)' : undefined}}><SpaceBackdrop from={from} camX={-rc.yaw * 14} camY={rc.pitch * 10} haze={0} intensity={0.6} seed={7} /></AbsoluteFill>
       {cc.visible && <div style={{position: 'absolute', left: cc.x - 1100 * cc.scale - 200, top: cc.y - 800 * cc.scale - 200, width: 2200 * cc.scale + 400, height: 1600 * cc.scale + 400, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(150,120,255,0.42), rgba(127,231,255,0.10) 55%, transparent)'}} />}
       {mb && (Math.abs(mb.vx) > 1.2 || Math.abs(mb.vy) > 1.2) ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
       <svg width={1920} height={1080} style={{position: 'absolute', left: 0, top: 0, mixBlendMode: 'screen'}}>{tethers}</svg>
@@ -361,7 +367,7 @@ const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
         const a = imp(t, tm.chipLand[i], 6);
         return q.visible && a > 0.05 ? <Glint key={c.name} x={q.x} y={q.y} size={180} intensity={1.2 * a} color="cyan" /> : null;
       })}
-      <Bokeh camX={-rc.yaw * 40} camY={rc.pitch * 30} count={26} opacity={0.6} boost={0.3 * kv} />
+      {!lite && <Bokeh camX={-rc.yaw * 40} camY={rc.pitch * 30} count={26} opacity={0.6} boost={0.3 * kv} />}
     </AbsoluteFill>
   );
 };
@@ -372,7 +378,7 @@ const PartB: React.FC<{cam: CamSpec; t: number; f: number; from: number; tm: Tm;
 const CopyA: React.FC<{t: number; tm: Tm}> = ({t, tm}) => {
   const {L} = tm;
   if (t < L(69) - 1 || t > L(72)) return null;
-  const out = L(71.75) - 2;
+  const out = L(71.5);
   return (
     <>
       <div style={{position: 'absolute', left: 160, top: -330, width: 1600, height: 820, background: 'radial-gradient(closest-side, rgba(4,2,10,0.6), rgba(4,2,10,0.28) 55%, transparent)', opacity: win(t, L(69) - 2, out + 10, 10, 10)}} />
@@ -442,8 +448,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   ];
   // A2 — macro on Judge's live bars
   const a2: CamKey[] = [
-    {at: 0, target: onPane(J.pos, J.ry, -10, MINI_Y - 10), yaw: -46, pitch: 4, dist: 1250, roll: 4, focal: 50},
-    {at: 14, dist: 1120, yaw: -40},
+    {at: 0, target: onPane(J.pos, J.ry, -10, MINI_Y + 10), yaw: -46, pitch: 4, dist: 1020, roll: 4, focal: 50},
+    {at: 14, dist: 930, yaw: -40},
   ];
   // A3 — Speaker ¾ dutch
   const a3: CamKey[] = [
@@ -471,7 +477,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {at: 0, target: [60, -10, 0], yaw: -34, pitch: 7, dist: 2700, roll: -6, focal: 24},
     {at: 9, ease: 'expoOut', dist: 2300, yaw: -26},
     {at: A7 - 14, ease: 'linear', yaw: 16, pitch: 5, dist: 2080, roll: 4, target: [-30, 10, 0]},
-    {at: A7, ease: 'expoIn', yaw: 22, pitch: 2, dist: 240, roll: 7, target: CORE},
+    {at: A7, ease: 'expoIn', yaw: 22, pitch: 2, dist: 820, roll: 7, target: CORE},
   ];
 
   // B1 — macro on the Type segment
@@ -497,14 +503,14 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   ];
   // B5 — chips burst out: pull back + orbit
   const b5: CamKey[] = [
-    {at: 0, target: rowPt('measure', 0, 0), yaw: -20, pitch: 10, dist: 1500, roll: -4, focal: 30, shiftX: 60, shiftY: 0},
-    {at: 20, ease: 'expoOut', target: [0, 20, 0], dist: 2800, yaw: -14, pitch: 8, shiftX: 20, shiftY: 100},
-    {at: L(79) - L(77), ease: 'linear', yaw: 8, pitch: 5, dist: 2920, roll: 2},
+    {at: 0, target: rowPt('measure', 0, 0), yaw: -24, pitch: 10, dist: 1400, roll: -5, focal: 30, shiftX: 120, shiftY: 40},
+    {at: 18, ease: 'expoOut', target: [0, 40, 0], dist: 2300, yaw: -22, pitch: 9, shiftX: 230, shiftY: 175},
+    {at: L(79) - L(77), ease: 'linear', yaw: -8, pitch: 7, dist: 2400, roll: -2},
   ];
   // B6 — hero wide, slow push, whip out
   const b6: CamKey[] = [
-    {at: 0, target: [0, -60, 0], yaw: -9, pitch: -17, dist: 3050, roll: 7, focal: 30, shiftX: 40, shiftY: 150},
-    {at: L(80) - L(79), yaw: -14, pitch: -14, dist: 2850, roll: 8},
+    {at: 0, target: [0, -60, 0], yaw: 14, pitch: -18, dist: 3250, roll: 7, focal: 30, shiftX: 60, shiftY: 105},
+    {at: L(80) - L(79), yaw: 20, pitch: -15, dist: 3020, roll: 8},
   ];
   const bLife = (lt: number, amp: number, seed: number) => [handheld(lt, amp, seed), kickPush(f, 16), jolt(t, tm.seg1, 0.6), ...tm.critLand.map((a) => jolt(t, a, 0.7)), jolt(t, tm.fill1, 0.5)];
   const rackB5 = (cam: CamSpec): number => {
@@ -522,7 +528,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const life = (lt: number, amp: number, seed: number) => [handheld(lt, amp, seed), kickPush(f, 18), jolt(t, tm.land.judge, 1.1), jolt(t, tm.land.speaker, 1), jolt(t, tm.land.clerk, 1.2), jolt(t, tm.ignite, 1.4)];
 
   const shots: Shot[] = [
-    {from: 0, to: L(65.5), name: 'A1 judge', in: flashCut({dur: 12, split: 0, peak: 0.5}),
+    {from: 0, to: L(65.5), name: 'A1 judge', in: flashCut({dur: 8, split: 0, peak: 0.32}),
       render: (lt, _p, info) => <PartA cam={addCam(camPath(lt, a1), ...life(lt, 0.8, 1))} t={info.t} f={info.t + from} from={from} tm={tm} />},
     {from: L(65.5), to: L(66), name: 'A2 judge macro', in: cut(),
       render: (lt, _p, info) => {
@@ -538,19 +544,19 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       render: (lt, _p, info) => <PartA cam={addCam(camPath(lt, a4), handheld(lt, 0.6, 4), kickZoom(f, 0.02))} t={info.t} f={info.t + from} from={from} tm={tm} focus={onPane(S.pos, S.ry, 0, MINI_Y)} aperture={12} tags={false} reflect={0} />},
     {from: L(68), to: L(69), name: 'A5 clerk', in: whip({dir: 'down', dur: 10}),
       render: (lt, _p, info) => <PartA cam={addCam(camPath(lt, a5), ...life(lt, 0.9, 5))} t={info.t} f={info.t + from} from={from} tm={tm} />},
-    {from: L(69), to: L(70), name: 'A6 trio', in: flashCut({dur: 8, peak: 0.55}),
+    {from: L(69), to: L(70), name: 'A6 trio', in: flashCut({dur: 8, peak: 0.4}),
       render: (lt, _p, info) => <PartA cam={addCam(camPath(lt, a6), ...life(lt, 0.6, 6))} t={info.t} f={info.t + from} from={from} tm={tm} />},
-    {from: L(70), to: L(72), name: 'A7 core', in: flashCut({dur: 10, peak: 0.8}),
+    {from: L(70), to: L(72), name: 'A7 core', in: flashCut({dur: 8, peak: 0.45}),
       render: (lt, _p, info) => {
         const at = (x: number) => camPath(x, a7);
         const m = camMotion(at, lt, CORE);
         const cam = addCam(at(lt), ...life(lt, 0.7, 7));
-        return <PartA cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} mb={{vx: m.dx, vy: m.dy}} tags={false} />;
+        return <PartA cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} mb={{vx: m.dx, vy: m.dy}} tags={false} lite={!!info.tout} />;
       }},
-    {from: L(72), to: L(73), name: 'B1 type', in: zoomThrough({dur: 16}),
+    {from: L(72), to: L(73), name: 'B1 type', in: zoomThrough({dur: 14, depth: 2.2}),
       render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, b1), ...bLife(lt, 0.6, 11));
-        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('type', -60, 14)} aperture={18} reticle />;
+        return <PartB cam={cam} t={info.t} f={info.t + from} from={from} tm={tm} focus={rowPt('type', -60, 14)} aperture={18 * clamp01(lt / 10)} reticle lite={lt < 0} bleed={lt < 8} />;
       }},
     {from: L(73), to: L(74.5), name: 'B2 criteria', in: whip({dir: 'up', dur: 10}),
       render: (lt, _p, info) => {

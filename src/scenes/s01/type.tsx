@@ -58,7 +58,7 @@ export const RevealLine: React.FC<RevealProps> = ({text, at, out, t, x, y, size,
   );
 };
 
-const POOL = 'ABCDEFGHJKLMNOPQRSTUVWXYZ#%&@?/<>01█▓▒';
+const POOL = 'ABCDEFGHJKLMNOPQRSTUVWXYZ#%&@?/<>01';
 
 /** Glitch-typed headline: characters resolve in a scrambled order through random glyphs; afterwards it holds with
  *  intermittent RGB tears and slice offsets driven by `g` (0..1). Centered lines. */
@@ -67,11 +67,9 @@ export const GlitchType: React.FC<{lines: string[]; at: number; t: number; y: nu
   const step = Math.floor(t / 2);
   const all = lines.join('\n');
   const n = all.length;
-  // reveal order: per-char random threshold
-  const shown = (i: number) => {
-    const th = 0.15 + 0.85 * h01(i * 3 + seed, 11);
-    return (t - at) / typeDur >= th;
-  };
+  // reveal order: left → right with a little jitter (a glitchy typewriter)
+  const thr = (i: number) => clamp((i / Math.max(1, n - 1)) * 0.86 + 0.1 * h01(i * 3 + seed, 11));
+  const shown = (i: number) => (t - at) / typeDur >= thr(i);
   const charAt = (c: string, i: number) => {
     if (c === ' ' || c === '\n') return c;
     if (shown(i)) {
@@ -79,7 +77,7 @@ export const GlitchType: React.FC<{lines: string[]; at: number; t: number; y: nu
       if (g > 0.35 && h01(step * 5 + i, seed + 2) < (g - 0.35) * 0.08) return POOL[Math.floor(h01(i, step) * POOL.length)];
       return c;
     }
-    const near = (t - at) / typeDur >= (0.15 + 0.85 * h01(i * 3 + seed, 11)) - 0.35;
+    const near = (t - at) / typeDur >= thr(i) - 0.14;
     return near ? POOL[Math.floor(h01(i * 7, step + seed) * POOL.length)] : ' ';
   };
   let k = 0;

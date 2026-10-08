@@ -76,13 +76,13 @@ export const GraphHud: React.FC<{f: number; start: number; end: number; nodes: n
   );
 };
 
-/** "Current state ▸ xxx" product-truth readout (from the Try-your-bot panel), bottom-left. */
+/** "Current state ▸ xxx" product-truth readout (from the Try-your-bot panel), top-left HUD slot. */
 export const CurrentState: React.FC<{f: number; start: number; end: number; id: string; changedAt: number}> = ({f, start, end, id, changedAt}) => {
   const o = eOut((f - start) / 12) * (1 - eIn((f - end) / 8));
   if (o <= 0.01) return null;
   const k = Math.exp(-Math.max(0, f - changedAt) / 7);
   return (
-    <div style={{position: 'absolute', left: 120, top: 868, display: 'flex', alignItems: 'center', gap: 16, opacity: o, fontFamily: FONT}}>
+    <div style={{position: 'absolute', left: 120, top: 132, display: 'flex', alignItems: 'center', gap: 16, opacity: o, fontFamily: FONT, padding: '10px 18px 10px 0', background: 'linear-gradient(90deg, rgba(4,2,10,0.55), rgba(4,2,10,0))'}}>
       <div style={{fontWeight: 600, fontSize: 18, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'rgba(205,187,255,0.9)'}}>Current state</div>
       <div style={{
         padding: '9px 22px 10px', borderRadius: 999, fontFamily: MONO, fontSize: 26, fontWeight: 700, color: '#0B0618',

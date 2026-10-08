@@ -2,7 +2,8 @@
 // angle, counters roll on impact. G ends on a speed-ramped pull-back revealing the assembled row.
 import React from 'react';
 import {AbsoluteFill} from 'remotion';
-import {kick} from '../../lib';
+import {kick, FONT} from '../../lib';
+import {Icon} from '../../ui/kit';
 import {World, Obj, CamSpec, CamKey, addCam, handheld, kickPush, resolveCam, project, FloorGrid, V3, camPath, MotionBlur} from '../../cine';
 import {DustField, Flash, Glint, EnergyBurst, LightStreak, FlareBurst} from '../../vfx';
 import {UITheme} from '../../ui/theme';
@@ -76,6 +77,50 @@ const OneCard: React.FC<{i: number; lc: number}> = ({i, lc}) => {
   );
 };
 
+/** count shown by the StatCard at lc (mirrors StatCard: round(n · clamp(p·1.4))) */
+const shownCount = (i: number, lc: number) => {
+  const p = lc >= LAND - 1 ? pr(lc, LAND - 1, 13) : 0;
+  return Math.round(STATS[i][1] * Math.min(1, p * 1.4));
+};
+const GLYPHS = ['Σ', '✓', '◆', '✓', 'Σ', '◆'];
+const TOK_RGB = ['160,130,255', '127,231,255', '69,227,176'];
+/** holographic tokens spawned by the counter: one per tick (states → orbs, judgments → typed glyphs, policies → shields) */
+const Tokens: React.FC<{i: number; lc: number; t: number}> = ({i, lc, t}) => {
+  const n = STATS[i][1];
+  const shown = shownCount(i, lc);
+  if (shown <= 0) return null;
+  const H = HOME[i];
+  const rgb = TOK_RGB[i];
+  return (
+    <>
+      {Array.from({length: n}, (_, j) => {
+        if (j >= shown) return null;
+        // frame at which token j appeared (first lc where shownCount > j)
+        let born = LAND - 1;
+        while (born < LAND + 14 && shownCount(i, born) <= j) born++;
+        const a = sat((lc - born) / 8);
+        const e = 1 - Math.pow(1 - a, 3);
+        const u = n > 1 ? j / (n - 1) : 0.5;
+        const x = H[0] + (u - 0.5) * 820;
+        const y = H[1] - 285 - 60 * Math.sin(Math.PI * u) - 10 * Math.sin((t + j * 9) / 12);
+        const ic = i === 0 ? <Icon.layers size={44} color="#fff" sw={2} /> : i === 2 ? <Icon.shield size={42} color="#fff" sw={2} /> : <span style={{fontFamily: FONT, fontWeight: 800, fontSize: 40, color: '#0B0618'}}>{GLYPHS[j % 6]}</span>;
+        return (
+          <Obj key={j} x={x} y={y + (1 - e) * 140} z={70 + (1 - e) * -60} s={0.4 + 0.6 * e} o={sat(a * 2.5)}>
+            <div style={{width: 210, height: 210, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: `radial-gradient(closest-side, rgba(${rgb},0.38) 40%, rgba(${rgb},0) 100%)`}}>
+              <div style={{width: 92, height: 92, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: i === 1 ? `radial-gradient(circle at 35% 30%, #fff 0%, rgba(${rgb},1) 60%)` : `radial-gradient(circle at 34% 27%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.12) 18%, rgba(${rgb},0.25) 55%, rgba(${rgb},0.75) 92%, rgba(235,250,255,0.9) 100%), rgba(14,8,30,0.55)`,
+                boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.6), 0 0 ${(18 + 30 * (1 - e)).toFixed(0)}px rgba(${rgb},0.9)`}}>
+                {ic}
+              </div>
+            </div>
+          </Obj>
+        );
+      })}
+    </>
+  );
+};
+
 const CardObj: React.FC<{i: number; lc: number}> = ({i, lc}) => {
   const q = pose(i, lc);
   return (
@@ -104,7 +149,7 @@ const Props: React.FC<{t: number; f: number}> = ({t, f}) => {
 };
 
 /** One stat-slam shot. `which` card slams at the cut; earlier cards are already home. */
-export const StatShot: React.FC<{which: 0 | 1 | 2; lt: number; t: number; from: number; keys: CamKey[]; label: string}> = ({which, lt, t, from, keys, label}) => {
+export const StatShot: React.FC<{which: 0 | 1 | 2; lt: number; t: number; from: number; keys: CamKey[]; label: string; lite?: boolean}> = ({which, lt, t, from, keys, label, lite}) => {
   const f = t + from;
   const camAt = (x: number) => addCam(camPath(x, keys), handheld(x, 0.9, 20 + which), kickPush(f, 26));
   START_CAM[which] = resolveCam(camPath(0, keys));
@@ -126,19 +171,25 @@ export const StatShot: React.FC<{which: 0 | 1 | 2; lt: number; t: number; from: 
       <World camera={cam} focus={HOME[which]} aperture={8} backdrop={<FloorGrid y={640} step={200} opacity={0.34} center={[0, -400]} extent={4600} fade={[900, 4400]} />}>
         <Props t={t} f={f} />
         {others.map((i) => <CardObj key={i} i={i} lc={999} />)}
+        {others.map((i) => <Tokens key={`t${i}`} i={i} lc={999} t={t} />)}
         {!flying && <CardObj i={which} lc={lt} />}
+        {!flying && <Tokens i={which} lc={lt} t={t} />}
       </World>
       {flying && (
         <MotionBlur vx={vx} vy={vy} shutter={0.7}>
           <World camera={cam}><CardObj i={which} lc={lt} /></World>
         </MotionBlur>
       )}
-      <LightStreak start={t - lt - 2} dur={13} angle={flightAngle} count={6} spread={300} length={1100} thickness={3} intensity={0.9} seed={7 + which} frame={t} />
-      <EnergyBurst x={hp.x} y={hp.y} at={t - lt + LAND} count={90} distance={900} dur={26} size={0.9} frame={t} />
-      <Flash at={t - lt + LAND} dur={9} color="white" max={0.22} bloom x={hp.x} y={hp.y} frame={t} />
-      <FlareBurst x={hp.x - 0.46 * CARD_W * hp.scale} y={hp.y - 0.4 * CARD_H * hp.scale} at={t - lt + LAND} dur={26} peak={1.1} scale={0.55} ghosts={0.5} flash={0} seed={3 + which} frame={t} />
-      <Glint x={hp.x + 0.44 * CARD_W * hp.scale} y={hp.y - 0.42 * CARD_H * hp.scale} size={260} intensity={1.4 * hit(lt, LAND + 1, 9)} spin={1.5} frame={t} />
-      <DustField frame={t} count={70} camX={-lt * 2} boost={kick(f) * 0.5} />
+      {!lite && (
+        <>
+          <LightStreak start={t - lt - 2} dur={13} angle={flightAngle} count={6} spread={300} length={1100} thickness={3} intensity={0.9} seed={7 + which} frame={t} />
+          <EnergyBurst x={hp.x} y={hp.y} at={t - lt + LAND} count={90} distance={900} dur={22} size={0.9} frame={t} />
+          <Flash at={t - lt + LAND} dur={9} color="white" max={0.22} bloom x={hp.x} y={hp.y} frame={t} />
+          <FlareBurst x={hp.x - 0.46 * CARD_W * hp.scale} y={hp.y - 0.4 * CARD_H * hp.scale} at={t - lt + LAND} dur={22} peak={1.1} scale={0.55} ghosts={0.5} flash={0} seed={3 + which} frame={t} />
+          <Glint x={hp.x + 0.44 * CARD_W * hp.scale} y={hp.y - 0.42 * CARD_H * hp.scale} size={260} intensity={1.4 * hit(lt, LAND + 1, 9)} spin={1.5} frame={t} />
+          <DustField frame={t} count={70} camX={-lt * 2} boost={kick(f) * 0.5} />
+        </>
+      )}
       <HudTag x={150} y={150} t={lt - LAND} label={label} value={`${STATS[which][1]} ${STATS[which][2]} · generated`} />
     </AbsoluteFill>
   );

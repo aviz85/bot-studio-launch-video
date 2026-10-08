@@ -3,7 +3,8 @@
  * ------------------------------------------------------------------------------------------------------------
  * SHOT LIST (every cut on B(k); local frame = B(k) − 860)
  *  A  32.0  (860, L0)    IGNITION — in: flash (in-only, peak 1). White-out → FlareBurst + hero refract Shockwave +
- *                        floor ring + EnergyBurst + CA kick. 24 mm, camera blown back (dolly 620 → 1350, dutch −8°→−3°).
+ *                        floor ring + EnergyBurst + lens-shock RGB fringe. 24 mm, camera blown back (dolly 640 → 1380,
+ *                        dutch −8°→−3°, kick shake).
  *                        ~46 glass shards of the avatar implode from everywhere (reversed explosion, accelerating into
  *                        the lock) while light streaks spiral inward; GodRays ignite behind. Lock = the cut at 33.
  *  B  33.0  (887, L27)   MACRO MEDALLION — in: cyan flash (lock). 55 mm low-angle 3/4 macro orbit on the glass avatar
@@ -23,7 +24,9 @@
  *  G  38.0  (1021, L161) HERO ORBIT + LOCK — in: cut into an in-camera speed ramp (heroRamp: whip-in fast → slow-mo
  *                        glide → snap out). Low-angle orbit around the exploded stack with light beams; layers COLLAPSE
  *                        38.5 → 39 and LOCK at 39 (1048): lock-in flashes, base glass fills, light sweep, flare glint.
- *                        Out at 40 (1075): half whip right (s04 should open with `in: whip({dir: 'right'})`).
+ *                        Out at 40 (1075): in-camera whip pan right (expo-in pan + velocity blur + streaks + swoosh),
+ *                        the outgoing half of a whip — s04 should open with `in: whip({dir: 'right'})`.
+ *                        (Done in-camera instead of Shots `out: whip`, whose half-whip renders this heavy world twice.)
  * Kick on every beat: kickPush / kickZoom on every camera, kick-pulsed glows (GodRays, halo, antenna bulb, app glow).
  * ============================================================================================================ */
 import React from 'react';
@@ -31,11 +34,11 @@ import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {SceneProps} from '../cine/types';
 import {
   World, Obj, FloorGrid, CamKey, CamSpec, V3, addCam, handheld, drift, kickPush, kickZoom, kickShake, camPath, camMotion,
-  heroRamp, MotionBlur, Shots, ShotInfo, beatShots, beatsToLocal, whip, flashCut, zoomThrough, cut, project, resolveCam, depthOf,
+  heroRamp, MotionBlur, Shots, beatShots, beatsToLocal, whip, flashCut, zoomThrough, cut, project, resolveCam,
 } from '../cine';
 import {kick, clamp, lerp} from '../lib';
 import {
-  SpaceBackdrop, GodRays, FlareBurst, Shockwave, EnergyBurst, Flash, ChromaticAberration, LensFlare, Glint, Bokeh, DustField,
+  SpaceBackdrop, GodRays, FlareBurst, Shockwave, EnergyBurst, Flash, LensFlare, Glint, Bokeh, DustField,
   LightStreak, Swoosh, VolumetricBeams, impulse,
 } from '../vfx';
 import {AV, ShardCloud, SHARD_LOCK, Medallion, ChromeTitle, LetterPose, Tagline, ConvergeLight} from './s03/art';
@@ -119,19 +122,19 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const rc = resolveCam(cam);
     const pa = project(rc, AVP);
     const rays = {x: pa.x, y: pa.y, I: 0.15 + 0.95 * clamp((lt - 2) / 22) + 0.3 * kick(f)};
-    const ca = 16 * impulse(lt, 0, 1, 3);
+    const fringe = impulse(lt, 0, 1, 4); // lens shock: cheap RGB fringe on the shard edges (no full-frame filter)
     const lockI = clamp((lt - (SHARD_LOCK - 6)) / 6);
     return (
       <AbsoluteFill>
-        <ChromaticAberration amount={ca}>
+        <AbsoluteFill>
           <World camera={rc} backdrop={<LogoSky t={t} from={from} rays={rays} camX={-rc.pos[0] * 0.3} />}>
             <Obj x={AVP[0]} y={AVP[1]} z={AVP[2]}>
-              <ShardCloud t={lt} />
+              <ShardCloud t={lt} fringe={fringe} />
             </Obj>
           </World>
           <ConvergeLight x={pa.x} y={pa.y} t={lt} radius={(AV / 2) * pa.scale} end={SHARD_LOCK} intensity={1} />
           <EnergyBurst x={pa.x} y={pa.y} at={0} frame={lt} count={190} distance={900} dur={46} />
-        </ChromaticAberration>
+        </AbsoluteFill>
         {/* hero refraction only while the ring is young and bright (backdrop-filter is the priciest effect here) */}
         <Shockwave x={pa.x} y={pa.y} at={0} frame={lt} rings={3} distort refract={lt < 18} radius={1250} dur={32} />
         <Shockwave x={960} y={890} at={2} frame={lt} squash={0.2} radius={1600} rings={1} thickness={120} intensity={0.8} />
@@ -294,7 +297,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const whipU = (x: number) => clamp((x - (durG - WHIP_PRE)) / WHIP_PRE);
   const whipPan = (x: number) => 60 * Math.pow(2, 10 * whipU(x) - 10) * (whipU(x) > 0 ? 1 : 0);
   const camGAt = (x: number) => addCam(camPath(rampG.time(x), keysG), {pan: whipPan(x)});
-  const shotG = (lt: number, info?: ShotInfo) => {
+  const shotG = (lt: number) => {
     const base = camGAt(lt);
     const cam = addCam(base, handheld(lt, 0.5, 17), kickPush(f, 26));
     const m = camMotion(camGAt, lt, [0, 0, 120]);
@@ -302,7 +305,6 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     // last frames: the whip pan smears everything — swap in cheap stand-in content once the blur is heavy
     const wu = whipU(lt);
     const lite = wu > 0.6;
-    void info;
     const w = appWorld(L(38) + lt, cam, {beams: lite ? 0 : 0.8, sheen: clamp((lt - lockLt + 1) / 26), lite});
     const pc = project(w.rc, [APP_TR[0], APP_TR[1], 2]);
     const lk = impulse(lt, lockLt, 1, 9);
@@ -333,9 +335,9 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 33, name: 'B macro', in: flashCut({dur: 8, split: 0.35, color: '#D8F6FF', peak: 0.75}), render: (lt) => shotB(lt)},
     {beat: 34, name: 'C title', in: whip({dir: 'down', dur: 10}), render: (lt) => shotC(lt)},
     {beat: 35, name: 'D lockup', in: flashCut({dur: 6, split: 0.3, color: '#E9E0FF', peak: 0.4}), render: (lt) => shotD(lt)},
-    {beat: 36, name: 'E materialize', in: zoomThrough({dur: 14, depth: 2.0, blur: 0.85}), render: (lt) => shotE(lt)},
+    {beat: 36, name: 'E materialize', in: zoomThrough({dur: 14, depth: 1.9, blur: 0}), render: (lt) => shotE(lt)},
     {beat: 37, name: 'F track', in: whip({dir: 'right', dur: 10}), render: (lt) => shotF(lt)},
-    {beat: 38, name: 'G hero', in: cut(), render: (lt, _p, info) => shotG(lt, info)},
+    {beat: 38, name: 'G hero', in: cut(), render: (lt) => shotG(lt)},
   ]);
 
   return (
@@ -352,6 +354,3 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
 /** Top-right corner of the app window (world) — flare glint at the lock. */
 const APP_TR: V3 = [780, -480, 0];
 const APP_CORNERS: V3[] = [[-786, -486, 4], [786, -486, 4], [786, 486, 4], [-786, 486, 4]];
-// keep tree-shaking quiet for helpers referenced only in comments
-void depthOf;
-void lerp;

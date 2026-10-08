@@ -79,7 +79,7 @@ export const Copy: React.FC<{
       {kicker && (
         <Kicker t={t} at={kicker.at} text={kicker.text} color={kicker.color} align={align} />
       )}
-      <div style={{filter: glow > 0 ? `drop-shadow(0 0 ${28}px rgba(150,115,255,${glow * 0.55})) drop-shadow(0 6px 30px rgba(4,2,10,0.65))` : undefined}}>
+      <div style={{filter: glow > 0 ? `drop-shadow(0 4px 24px rgba(70,40,150,${(0.45 + 0.5 * glow).toFixed(3)}))` : undefined}}>
         {lines.map((ln, li) => {
           const words = ln.text.split(' ');
           const st = ln.stagger ?? 5;
@@ -228,6 +228,8 @@ export const OldChat: React.FC<{t: number; off: number}> = ({t, off}) => {
             {dots.map((o, i) => <div key={i} style={{width: 11, height: 11, borderRadius: 6, background: '#6E6A78', opacity: o}} />)}
           </div>
         </div>
+        {/* the overhead beam grazing the top of the widget */}
+        <div style={{position: 'absolute', left: 0, right: 0, top: 0, height: H, background: 'radial-gradient(42% 70% at 52% 0%, rgba(225,215,255,0.16) 0%, rgba(200,185,255,0.05) 55%, transparent 100%)', pointerEvents: 'none'}} />
         <div style={{position: 'absolute', left: 20, right: 20, bottom: 20, height: 60, borderRadius: 12, background: '#2F2D34', border: '1.5px solid #3C3A43', display: 'flex', alignItems: 'center', padding: '0 18px', fontSize: 19, color: '#5E5B67'}}>
           Type a message…
           <div style={{flex: 1}} />

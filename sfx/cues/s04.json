@@ -3,17 +3,6 @@
   "cues": [
     {
       "frame": 1075,
-      "sfx": "whip",
-      "gain_db": -11,
-      "pan": 0,
-      "params": {
-        "direction": "rl",
-        "seed": 41
-      },
-      "note": "b40: whip in from s03 (incoming half)"
-    },
-    {
-      "frame": 1075,
       "sfx": "hum_holo",
       "gain_db": -22,
       "pan": -0.1,
@@ -427,7 +416,7 @@
       "note": "b50: flash cut + fast pull-back"
     },
     {
-      "frame": 1345,
+      "frame": 1346,
       "sfx": "glass_tick",
       "gain_db": -18,
       "pan": -0.4,
@@ -460,6 +449,16 @@
       "note": "pieces fly up into orbit"
     },
     {
+      "frame": 1350,
+      "sfx": "glass_tick",
+      "gain_db": -16,
+      "pan": 0.1,
+      "params": {
+        "pitch": 1.26,
+        "seed": 3
+      }
+    },
+    {
       "frame": 1351,
       "sfx": "sparkle",
       "gain_db": -20,
@@ -473,16 +472,6 @@
     },
     {
       "frame": 1354,
-      "sfx": "glass_tick",
-      "gain_db": -16,
-      "pan": 0.1,
-      "params": {
-        "pitch": 1.26,
-        "seed": 3
-      }
-    },
-    {
-      "frame": 1357,
       "sfx": "glass_tick",
       "gain_db": -16,
       "pan": -0.05,

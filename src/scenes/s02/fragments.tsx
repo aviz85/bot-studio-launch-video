@@ -128,7 +128,8 @@ export const rv = (t: number, at: number, dur: number) => expoOut(clamp((t - at)
 /* ------------------------------------------------------------------------------------------------------------------
  * HoloOrb — local version of ui/GlassOrbNode (holo look). The shared component draws its bloom as a child that
  * overflows the orb's s×s box; inside a 3D World Chromium clips that gradient to the box → a visible light SQUARE
- * around every orb (also visible in demo:glass). Here the root box is the full bloom extent, so nothing overflows.
+ * around every orb (also visible in demo:glass). Here the root box is the full bloom extent, so nothing overflows,
+ * and its glow is a gradient: a large-blur outer box-shadow on a circle inside 3D ALSO renders as a square.
  * ------------------------------------------------------------------------------------------------------------------ */
 const ORB_RGB = {lilac: '160,130,255', cyan: '127,231,255', green: '69,227,176', amber: '255,192,77'} as const;
 export const HoloOrb: React.FC<{size?: number; label?: string; icon?: string; active?: number; t?: number; tone?: keyof typeof ORB_RGB; p?: number}> = ({size = 300, label, icon, active = 0, t = 0, tone = 'lilac', p = 1}) => {
@@ -149,7 +150,7 @@ export const HoloOrb: React.FC<{size?: number; label?: string; icon?: string; ac
   );
   return (
     <div style={{position: 'relative', width: R * 2, height: R * 2, transform: `scale(${sc.toFixed(4)})`, opacity: p < 0.34 ? clamp(p * 3) : undefined, fontFamily: FONT}}>
-      <div style={{...o(R * 2), background: `radial-gradient(closest-side, rgba(${rgb},${(0.34 * (0.45 + a)).toFixed(3)}), rgba(${rgb},${(0.1 * (0.45 + a)).toFixed(3)}) 55%, rgba(${rgb},0) 100%)`}} />
+      <div style={{...o(R * 2), background: `radial-gradient(closest-side, rgba(${rgb},${(0.4 * (0.45 + a)).toFixed(3)}) 0%, rgba(${rgb},${(0.3 * (0.45 + a)).toFixed(3)}) 42%, rgba(${rgb},${(0.08 * (0.45 + a)).toFixed(3)}) 66%, rgba(${rgb},0) 100%)`}} />
       {a > 0.01 && [0, 0.5].map((k) => {
         const ph = ((t / 46 + k) % 1 + 1) % 1;
         const d = s * (1.04 + 0.75 * ph);
@@ -157,7 +158,7 @@ export const HoloOrb: React.FC<{size?: number; label?: string; icon?: string; ac
       })}
       {a > 0.01 && half('back')}
       <div style={{...o(s), background: `radial-gradient(circle at 34% 27%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.18) 9%, rgba(255,255,255,0) 22%), radial-gradient(circle at 50% 58%, rgba(${rgb},${0.08 + 0.12 * a}) 0%, rgba(${rgb},${0.16 + 0.14 * a}) 48%, rgba(${rgb},${0.5 + 0.2 * a}) 86%, rgba(235,250,255,0.75) 100%), rgba(14,8,30,0.55)`,
-        boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.45), inset ${-s * 0.06}px ${-s * 0.09}px ${s * 0.18}px rgba(${rgb},0.55), inset ${s * 0.04}px ${s * 0.05}px ${s * 0.12}px rgba(255,255,255,0.25)${a > 0 ? `, 0 0 ${(s * 0.45 * a).toFixed(1)}px rgba(${rgb},${(0.85 * a).toFixed(3)})` : ''}`}}>
+        boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.45), inset ${-s * 0.06}px ${-s * 0.09}px ${s * 0.18}px rgba(${rgb},0.55), inset ${s * 0.04}px ${s * 0.05}px ${s * 0.12}px rgba(255,255,255,0.25)`}}>
         <div style={{position: 'absolute', left: '14%', right: '14%', bottom: '5%', height: '34%', borderRadius: '50%', background: `radial-gradient(50% 60% at 50% 100%, rgba(${rgb},${0.55 + 0.35 * a}), rgba(${rgb},0) 100%)`}} />
         <div style={{position: 'absolute', left: '18%', top: '11%', width: '32%', height: '17%', borderRadius: '50%', transform: 'rotate(-32deg)', background: 'radial-gradient(closest-side, rgba(255,255,255,0.95), rgba(255,255,255,0) 100%)'}} />
       </div>

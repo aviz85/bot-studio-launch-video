@@ -45,9 +45,9 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 44, name: 'D burst', in: flashCut({dur: 12, split: 0.25, peak: 0.78, color: '#EAF9FF', punch: 0.08}), render: (lt, _p, i) => <BurstShot lt={lt} t={i.from + lt} from={from} />},
     {beat: 45, name: 'E slam states', in: cut(), render: (lt, _p, i) => <StatShot which={0} lt={lt} t={i.from + lt} from={from} keys={KEYS_E} label="States" />},
     {beat: 46, name: 'F slam judgments', in: cut(), render: (lt, _p, i) => <StatShot which={1} lt={lt} t={i.from + lt} from={from} keys={KEYS_F} label="Judgments" />},
-    {beat: 47, name: 'G slam policies', in: cut(), render: (lt, _p, i) => <StatShot which={2} lt={lt} t={i.from + lt} from={from} keys={KEYS_G} label="Policies" />},
-    {beat: 48, name: 'H proposal', in: whip({dir: 'down', dur: 10}), render: (lt, _p, i) => <ProposalShot lt={lt} t={i.from + lt} from={from} />},
-    {beat: 50, name: 'I whole bot', in: flashCut({dur: 10, peak: 0.45, color: '#E7F4B9'}), out: zoomThrough({dur: 16}), render: (lt, _p, i) => <WholeShot lt={lt} t={i.from + lt} from={from} />},
+    {beat: 47, name: 'G slam policies', in: cut(), render: (lt, _p, i) => <StatShot which={2} lt={lt} t={i.from + lt} from={from} keys={KEYS_G} label="Policies" lite={!!i.tout} />},
+    {beat: 48, name: 'H proposal', in: whip({dir: 'down', dur: 10, blur: 0.6}), render: (lt, _p, i) => <ProposalShot lt={lt} t={i.from + lt} from={from} lite={!!i.tin} />},
+    {beat: 50, name: 'I whole bot', in: flashCut({dur: 10, peak: 0.45, color: '#E7F4B9'}), out: zoomThrough({dur: 16, depth: 1.9, blur: 0}), render: (lt, _p, i) => <WholeShot lt={lt} t={i.from + lt} from={from} />},
   ]);
   return (
     <AbsoluteFill style={{background: '#04020A'}}>

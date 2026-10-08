@@ -56,7 +56,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   const S1 = (lt: number) => {
     const tt = lt + L(120);
     const cam = addCam(camPath(lt, cc.s1), handheld(lt, 0.8, 11), kickPush(tt + from, 22));
-    return <ChatShot t={tt} from={from} L={L} cam={cam} aperture={5} focus={msgPos(msgs, 0, tt)} />;
+    return <ChatShot t={tt} from={from} L={L} cam={cam} aperture={5} focus={msgPos(msgs, 0, tt)} heartFx />;
   };
   const S2 = (lt: number) => {
     const tt = lt + L(121.5);
@@ -75,7 +75,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     const tt = lt + L(125);
     const tg = msgPos(msgs, 3, tt);
     const cam = addCam({...camPath(lt, cc.s4), target: [tg[0] - 60, tg[1] + 30, tg[2]]}, handheld(lt, 0.9, 14), kickShake(tt + from, 0.6));
-    return <ChatShot t={tt} from={from} L={L} cam={cam} aperture={110} focus={tg} />;
+    return <ChatShot t={tt} from={from} L={L} cam={cam} aperture={80} maxBlur={16} focus={tg} />;
   };
   const r5 = heroRamp(L(128) - L(126), L(128) - L(126), {fast: 2.6, slow: 0.45, inFrac: 0.2, outFrac: 0.12});
   const S5 = (lt: number) => {
@@ -173,9 +173,9 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 123.5, name: 'S3 lane', in: flashCut({dur: 7, peak: 0.35, color: '#CFF6FF', punch: 0.03}), render: S3},
     {beat: 125, name: 'S4 confirm', in: flashCut({dur: 10, peak: 0.8, color: '#E8FFF4'}), render: S4},
     {beat: 126, name: 'S5 amazing', in: whip({dir: 'up', dur: 10, seed: 5}), render: S5},
-    {beat: 128, name: 'S6 track', in: zoomThrough({dur: 14, depth: 2.6}), render: S6},
+    {beat: 128, name: 'S6 track', in: zoomThrough({dur: 14, depth: 2.2}), render: S6},
     {beat: 130, name: 'S7 reveal', in: whip({dir: 'right', dur: 10, seed: 7}), render: S7},
-    {beat: 132, name: 'S8 stream', in: glitchCut({dur: 8, slices: false, seed: 4}), render: S8},
+    {beat: 132, name: 'S8 stream', in: glitchCut({dur: 6, slices: false, seed: 4}), render: S8},
     {beat: 134, name: 'S9 macro', in: flashCut({dur: 6, peak: 0.4, color: '#CFF6FF', punch: 0.04}), render: S9},
     {beat: 136, name: 'S10 valid', in: flashCut({dur: 14, peak: 0.78, color: '#F4FFE0'}), render: S10},
     {beat: 137, name: 'S11 project', in: whip({dir: 'left', dur: 10, seed: 9}), out: flashCut({dur: 14, split: 0.35, peak: 0.85}), render: S11},

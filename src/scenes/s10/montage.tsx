@@ -7,7 +7,7 @@ import {World, Obj, CamKey, camPath, camMotion, addCam, handheld, kickZoom, Moti
 import {SpaceBackdrop, LightStreak, Bokeh} from '../../vfx';
 import {Sheen} from '../../ui';
 import {lb, HIT, clamp01, mix, smoothstep, eo, decay, gradText, CHROME} from './common';
-import {DISPLAY} from '../../lib';
+import {DISPLAY, MONO} from '../../lib';
 
 export const DW = 1586;
 export const DH = 992;
@@ -37,6 +37,31 @@ export const DesignPane: React.FC<{name: string; sheen?: number; glow?: number; 
   );
 };
 
+/** HUD reticle: four cyan corner brackets converging onto a UI element + a tracked label tag. */
+const Reticle3D: React.FC<{w: number; h: number; label: string; lt: number}> = ({w, h, label, lt}) => {
+  const p = eo(clamp01((lt - 3) / 9));
+  if (p <= 0) return null;
+  const sc = mix(1.35, 1, p);
+  const lock = decay(lt, 12, 5);
+  const c = `rgba(127,231,255,${(0.55 + 0.45 * p).toFixed(3)})`;
+  const L = Math.min(46, w * 0.22, h * 0.45);
+  const corner = (st: React.CSSProperties) => <div style={{position: 'absolute', width: L, height: L, ...st, filter: undefined, boxShadow: `0 0 ${10 + 18 * lock}px rgba(127,231,255,${0.5 + 0.5 * lock})`}} />;
+  const b = `4px solid ${c}`;
+  return (
+    <div style={{position: 'relative', width: w, height: h, transform: `scale(${sc.toFixed(4)})`, opacity: smoothstep(0, 0.3, p)}}>
+      {lock > 0.03 && <div style={{position: 'absolute', inset: 0, borderRadius: 10, background: `rgba(127,231,255,${0.16 * lock})`}} />}
+      {corner({left: 0, top: 0, borderLeft: b, borderTop: b, borderTopLeftRadius: 8})}
+      {corner({right: 0, top: 0, borderRight: b, borderTop: b, borderTopRightRadius: 8})}
+      {corner({left: 0, bottom: 0, borderLeft: b, borderBottom: b, borderBottomLeftRadius: 8})}
+      {corner({right: 0, bottom: 0, borderRight: b, borderBottom: b, borderBottomRightRadius: 8})}
+      <div style={{position: 'absolute', left: 0, bottom: h + 12, padding: '7px 14px', borderRadius: 8, whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 22, letterSpacing: '0.12em', color: '#BFF4FF',
+        background: 'rgba(8,4,24,0.82)', boxShadow: `inset 0 0 0 1.5px rgba(127,231,255,0.6), 0 0 ${16 + 20 * lock}px rgba(127,231,255,0.45)`, opacity: smoothstep(0.5, 1, p)}}>
+        {label.slice(0, Math.round(label.length * clamp01((lt - 6) / 8)))}
+      </div>
+    </div>
+  );
+};
+
 /** Thin back-plate (empty frosted glass) for exploded depth behind a pane. */
 const BackPlate: React.FC<{o?: number}> = ({o = 1}) => (
   <div style={{width: DW + 32, height: DH + 32, borderRadius: 40, opacity: o, background: 'linear-gradient(150deg, rgba(200,180,255,0.20), rgba(127,231,255,0.06))', boxShadow: 'inset 0 0 0 1.5px rgba(205,187,255,0.5), inset 0 1.5px 0 rgba(255,255,255,0.6)'}} />
@@ -56,38 +81,40 @@ type MShot = {
   plates?: number; // exploded glass layers behind
   deck?: boolean; // version stack
   floor?: number; // FloorGrid y (god shot)
+  /** HUD reticle locked onto a UI element: [x, y, w, h] in pane-centred px + label */
+  ret?: [number, number, number, number, string];
 };
 
 export const MONTAGE: MShot[] = [
-  {beat: 152, design: '05-policies', rot: [0, -26, 0], plates: 2,
+  {beat: 152, design: '05-policies', ret: [-63, -6, 900, 210, 'POLICY · WHEN → THEN'], rot: [0, -26, 0], plates: 2,
     keys: [{at: 0, target: [-60, 60, 0], yaw: -36, pitch: 15, dist: 2500, roll: -8, focal: 26, shiftX: 400},
       {at: 10, ease: 'expoOut', yaw: -24, pitch: 11, dist: 2020, roll: -5},
       {at: 30, yaw: -19, pitch: 9, dist: 1880, roll: -4}]},
-  {beat: 153, design: '07-judgment-editor', rot: [10, -16, 0], aperture: 12, focus: [117, -262, 50],
+  {beat: 153, design: '07-judgment-editor', ret: [96, -268, 240, 66, 'TYPE · SCORE'], rot: [10, -16, 0], aperture: 12, focus: [117, -262, 50],
     keys: [{at: 0, target: [-40, -250, 40], yaw: -50, pitch: 10, dist: 1600, roll: 11, focal: 40, shiftX: 400},
       {at: 9, ease: 'expoOut', target: [90, -262, 50], yaw: -42, dist: 1380, roll: 9},
       {at: 30, target: [150, -262, 50], yaw: -39, dist: 1330, roll: 8}]},
-  {beat: 154, design: '03-states', rot: [90, 0, 0], plates: 2, floor: 420,
+  {beat: 154, design: '03-states', ret: [-87, 43, 880, 170, 'STATES · 4 STEPS'], rot: [90, 0, 0], plates: 2, floor: 420,
     keys: [{at: 0, target: [0, 0, 0], yaw: 34, pitch: -58, dist: 3100, roll: 10, focal: 30, shiftX: -440},
       {at: 10, ease: 'expoOut', yaw: 14, pitch: -68, dist: 2350, roll: 4},
       {at: 30, yaw: 8, pitch: -72, dist: 2200, roll: 2}]},
-  {beat: 155, design: '10-functions', rot: [0, 34, 0], plates: 1,
+  {beat: 155, design: '10-functions', ret: [56, 22, 660, 190, 'CLERK · CREATE_LEAD'], rot: [0, 34, 0], plates: 1,
     keys: [{at: 0, target: [420, 0, 0], yaw: 46, pitch: -6, dist: 1900, roll: 12, focal: 28, shiftX: -380},
       {at: 9, ease: 'expoOut', target: [60, 0, 0], yaw: 36, dist: 1750, roll: 10},
       {at: 30, target: [-80, 0, 0], yaw: 33, dist: 1700, roll: 9}]},
-  {beat: 156, design: '01-live-dashboard', rot: [0, -12, 0], plates: 3,
+  {beat: 156, design: '01-live-dashboard', ret: [-204, -25, 660, 550, 'SIGNAL WALL · LIVE'], rot: [0, -12, 0], plates: 3,
     keys: [{at: 0, target: [0, 40, 0], yaw: -20, pitch: 8, dist: 3000, roll: -3, focal: 32, shiftX: 400},
       {at: 10, ease: 'expoOut', yaw: -14, pitch: 6, dist: 2200, roll: -2},
       {at: 30, yaw: -11, pitch: 5, dist: 2050, roll: -1.5}]},
-  {beat: 157, design: '11-evaluation', rot: [-30, -18, 0],
+  {beat: 157, design: '11-evaluation', ret: [-74, 284, 920, 170, 'EVAL · PASSED'], rot: [-30, -18, 0],
     keys: [{at: 0, target: [0, 120, 0], yaw: -26, pitch: 30, dist: 2300, roll: -14, focal: 26, shiftX: 400},
       {at: 9, ease: 'expoOut', yaw: -18, pitch: 24, dist: 1950, roll: -11},
       {at: 30, yaw: -15, pitch: 22, dist: 1860, roll: -10}]},
-  {beat: 158, design: '12-versions', rot: [0, 24, 0], deck: true,
+  {beat: 158, design: '12-versions', ret: [-68, -248, 930, 100, 'VERSION 4 · CURRENT'], rot: [0, 24, 0], deck: true,
     keys: [{at: 0, target: [0, 0, -300], yaw: 40, pitch: 6, dist: 3200, roll: 6, focal: 30, shiftX: -400},
       {at: 10, ease: 'expoOut', yaw: 30, dist: 2700, roll: 4},
       {at: 30, yaw: 26, dist: 2600, roll: 3}]},
-  {beat: 159, design: '13-botscript', rot: [0, 30, 0], aperture: 9, focus: [-100, -60, 0],
+  {beat: 159, design: '13-botscript', ret: [-68, 149, 900, 120, 'BOTSCRIPT · VALID'], rot: [0, 30, 0], aperture: 9, focus: [-100, -60, 0],
     keys: [{at: 0, target: [320, -40, 0], yaw: 44, pitch: 8, dist: 1800, roll: -7, focal: 30, shiftX: -380},
       {at: 8, ease: 'expoOut', target: [-40, -60, 0], yaw: 38, pitch: 6, dist: 1680, roll: -6},
       {at: 16, target: [-140, -70, 0], yaw: 36, pitch: 6, dist: 1650, roll: -6}]},
@@ -148,7 +175,7 @@ export const autoShift = (idx: number) => {
 };
 
 /** Render one montage shot at shot-local time lt. f = global frame. */
-export const MontageShot: React.FC<{m: MShot; lt: number; t: number; f: number; from: number; idx: number}> = ({m, lt, t, f, from, idx}) => {
+export const MontageShot: React.FC<{m: MShot; lt: number; t: number; f: number; from: number; idx: number; mbOff?: boolean}> = ({m, lt, t, f, from, idx, mbOff}) => {
   const extra = autoShift(idx);
   const base = (x: number) => {
     const c = camPath(x, m.keys);
@@ -161,10 +188,10 @@ export const MontageShot: React.FC<{m: MShot; lt: number; t: number; f: number; 
   const flash = decay(lt, 0, 5);
   const [rx, ry, rz] = m.rot;
   const world = (
-    <World camera={rc} aperture={m.aperture ?? 0} focus={m.focus} backdrop={m.floor ? <FloorGrid y={m.floor} step={180} extent={4000} center={[0, 0]} fade={[1200, 3800]} opacity={0.35} /> : undefined}>
+    <World camera={rc} backdrop={m.floor ? <FloorGrid y={m.floor} step={180} extent={4000} center={[0, 0]} fade={[1200, 3800]} opacity={0.35} /> : undefined}>
       <Obj rx={rx} ry={ry} rz={rz}>
         {m.plates ? Array.from({length: m.plates}, (_, i) => (
-          <Obj key={i} z={-(m.plates! - i) * 150 - 40 * (1 - eo(clamp01(lt / 14)))} x={(m.plates! - i) * 26} y={-(m.plates! - i) * 18} dof={0.7}>
+          <Obj key={i} z={-(m.plates! - i) * (170 + 60 * (1 - eo(clamp01(lt / 16))))} x={(m.plates! - i) * 70} y={-(m.plates! - i) * 46} dof={0.7}>
             <BackPlate o={0.9 - i * 0.15} />
           </Obj>
         )) : null}
@@ -176,6 +203,11 @@ export const MontageShot: React.FC<{m: MShot; lt: number; t: number; f: number; 
         <Obj x={m.deck ? -260 * eo(clamp01(lt / 18)) : 0}>
           <DesignPane name={m.design} sheen={sheen} flash={flash} />
         </Obj>
+        {m.ret && (
+          <Obj x={m.ret[0] + (m.deck ? -260 * eo(clamp01(lt / 18)) : 0)} y={m.ret[1]} z={36}>
+            <Reticle3D w={m.ret[2]} h={m.ret[3]} label={m.ret[4]} lt={lt} />
+          </Obj>
+        )}
       </Obj>
     </World>
   );
@@ -183,7 +215,7 @@ export const MontageShot: React.FC<{m: MShot; lt: number; t: number; f: number; 
   return (
     <AbsoluteFill>
       <SpaceBackdrop from={from} frame={t} camX={rc.yaw * 12 + rc.shiftX * 0.3} camY={-rc.pitch * 8} haze={0.2} intensity={1.15} seed={5 + idx} />
-      {sp > 2 ? <MotionBlur vx={mo.dx} vy={mo.dy} shutter={0.6}>{world}</MotionBlur> : world}
+      {sp > 8 && !mbOff ? <MotionBlur vx={mo.dx} vy={mo.dy} shutter={0.6}>{world}</MotionBlur> : world}
       <Bokeh frame={t} count={12} focus={0.05} opacity={0.5} seed={idx * 7 + 2} camX={-(rc.yaw * 30 + rc.shiftX * 0.6 + lt * 6)} camY={rc.pitch * 20} />
     </AbsoluteFill>
   );

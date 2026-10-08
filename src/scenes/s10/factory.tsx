@@ -315,7 +315,7 @@ export const FactoryFrame: React.FC<{
   );
   return (
     <AbsoluteFill>
-      {mb && Math.hypot(mb.vx, mb.vy) > 1.5 ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
+      {mb && Math.hypot(mb.vx, mb.vy) > 9 ? <MotionBlur vx={mb.vx} vy={mb.vy}>{world}</MotionBlur> : world}
       {dim > 0.01 && <AbsoluteFill style={{background: `radial-gradient(55% 60% at ${sp.x.toFixed(0)}px ${sp.y.toFixed(0)}px, rgba(4,2,10,${(0.3 * dim).toFixed(3)}) 0%, rgba(4,2,10,${(0.75 * dim).toFixed(3)}) 65%, rgba(4,2,10,${(0.92 * dim).toFixed(3)}) 100%)`}} />}
       {rays > 0.01 && sp.visible && <GodRays x={sp.x} y={sp.y} intensity={rays} frame={t} lobes={18} length={1500} dust={0.6} />}
       {glint > 0.01 && sp.visible && <Glint x={sp.x} y={sp.y} size={260 + 300 * glint} intensity={glint * (0.8 + 0.4 * kick(f, 8))} frame={t} />}

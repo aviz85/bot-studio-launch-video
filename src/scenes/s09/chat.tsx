@@ -118,13 +118,13 @@ const Lane: React.FC<{t: number; L: LFn}> = ({t, L}) => {
 /* ------------------------------------------------------------------ */
 /* Feature chips anchored near what they describe                       */
 /* ------------------------------------------------------------------ */
-type ChipDef = {icon: string; text: string; at: number; anchor: (t: number) => V3; extra?: React.ReactNode};
+type ChipDef = {icon: string; text: string; at: number; until?: number; anchor: (t: number) => V3; extra?: React.ReactNode};
 const chipDefs = (msgs: BubbleSpec[], L: LFn): ChipDef[] => [
   {icon: 'bolt', text: 'Instant reaction', at: L(121) + 5, anchor: (t) => {const p = msgPos(msgs, 0, t); return [p[0] - 170, p[1] - 118, p[2] + 40];}},
-  {icon: 'chat', text: 'Paced message groups', at: L(123) + 6, anchor: (t) => {const p = msgPos(msgs, 1, t); return [p[0] + 560, p[1] + 74, p[2] + 40];}},
+  {icon: 'chat', text: 'Paced message groups', at: L(123) + 6, until: L(125.75), anchor: (t) => {const p = msgPos(msgs, 1, t); return [p[0] + 560, p[1] + 74, p[2] + 40];}},
   {icon: 'calendar', text: 'Booking ran in the background', at: L(124) + 3, anchor: () => laneW2(600, 360)},
   {
-    icon: 'paperclip', text: 'Files · voice · GIFs', at: L(126.5) + 6, anchor: (t) => {const p = msgPos(msgs, 4, t); return [p[0] + 470, p[1] + 70, p[2] + 40];},
+    icon: 'paperclip', text: 'Files · voice · GIFs', at: L(126.5) + 6, anchor: (t) => {const p = msgPos(msgs, 4, t); return [p[0] - 587, p[1] - 50, p[2] - 200];},
     extra: (
       <div style={{display: 'flex', gap: 8, marginLeft: 6}}>
         {['mic', 'doc'].map((k) => {const I = Icon[k]; return <div key={k} style={{width: 34, height: 34, borderRadius: 10, background: 'rgba(127,231,255,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px rgba(127,231,255,0.5)'}}><I size={20} color="#BFF4FF" /></div>;})}
@@ -167,7 +167,7 @@ const ChatSet: React.FC<{t: number; f: number; L: LFn; msgs: BubbleSpec[]; near:
         const a = c.anchor(t);
         return (
           <Obj key={`c${i}`} x={a[0]} y={a[1] + Math.sin(t / 21 + i * 2) * 7} z={a[2]} billboard>
-            <FeatureChip icon={c.icon} text={c.text} p={p} pulse={0.6 * k} extra={c.extra} />
+            <FeatureChip icon={c.icon} text={c.text} p={p} o={c.until !== undefined ? 1 - p01(t, c.until, 8) : 1} pulse={0.6 * k} extra={c.extra} />
           </Obj>
         );
       })}
@@ -178,12 +178,12 @@ const ChatSet: React.FC<{t: number; f: number; L: LFn; msgs: BubbleSpec[]; near:
 /* ------------------------------------------------------------------ */
 /* One framed chat shot                                                 */
 /* ------------------------------------------------------------------ */
-export type ChatShotProps = {t: number; from: number; L: LFn; cam: CamSpec; aperture?: number; focus?: number | V3; blur?: {vx: number; vy: number}; near?: [number, number]; flare?: number; children?: React.ReactNode};
+export type ChatShotProps = {t: number; from: number; L: LFn; cam: CamSpec; aperture?: number; focus?: number | V3; blur?: {vx: number; vy: number}; near?: [number, number]; flare?: number; heartFx?: boolean; maxBlur?: number; children?: React.ReactNode};
 
 /** a distant light source behind the conversation (drives a parallax anamorphic flare) */
 const LIGHT: V3 = [-2000, -2000, -2800];
 
-export const ChatShot: React.FC<ChatShotProps> = ({t, from, L, cam, aperture = 0, focus, blur, near = [60, 360], flare = 0.55, children}) => {
+export const ChatShot: React.FC<ChatShotProps> = ({t, from, L, cam, aperture = 0, focus, blur, near = [60, 360], flare = 0.55, heartFx = false, maxBlur = 22, children}) => {
   const f = t + from;
   const msgs = chatMsgs(L);
   const rc = resolveCam(cam);
@@ -198,7 +198,7 @@ export const ChatShot: React.FC<ChatShotProps> = ({t, from, L, cam, aperture = 0
   const lp = project(rc, LIGHT);
   const beamA = L(125) - 6;
   const world = (
-    <World camera={rc} aperture={aperture} focus={focus} backdrop={<GridLayer floorY={900} grid={0.3} />}>
+    <World camera={rc} aperture={aperture} focus={focus} maxBlur={maxBlur} backdrop={<GridLayer floorY={900} grid={0.3} />}>
       <ChatSet t={t} f={f} L={L} msgs={msgs} near={near} />
     </World>
   );
@@ -209,7 +209,7 @@ export const ChatShot: React.FC<ChatShotProps> = ({t, from, L, cam, aperture = 0
       <DustField camX={-rc.yaw * 22} camY={rc.pitch * 22} boost={0.5 * k} count={120} frame={t} />
       {flare > 0 && lp.visible && lp.x > -400 && lp.x < 2400 && lp.y > -400 && lp.y < 1400 ? <LensFlare x={lp.x} y={lp.y} intensity={flare * (0.8 + 0.35 * k)} scale={0.8} streak={0.9} ghosts={0.6} rays={10} flicker={0.25} frame={t} /> : null}
       {/* ❤️ reaction burst */}
-      {t >= heartAt - 1 && t < heartAt + 50 && heartP.visible ? (
+      {heartFx && t >= heartAt - 1 && t < heartAt + 50 && heartP.visible ? (
         <>
           <EnergyBurst x={heartP.x} y={heartP.y} at={heartAt} dur={40} count={70} distance={300 * heartP.scale} color="#FF8FCB" secondary="#CDBBFF" size={0.8} frame={t} />
           <Sparkles area={{x: heartP.x - 260, y: heartP.y - 220, w: 520, h: 440}} count={26} boost={Math.exp(-(t - heartAt) / 14)} opacity={clamp(1 - (t - heartAt) / 50)} frame={t} seed={7} />
@@ -240,7 +240,7 @@ export const chatCams = (L: LFn) => {
   ];
   const s2: CamKey[] = [
     {at: 0, target: [-20, 90, -180], yaw: 20, pitch: -6, dist: 1450, roll: 6, focal: 35, shiftX: 300},
-    {at: L(123.5) - L(121.5), ease: 'linear', target: [-60, 30, -260], yaw: 10, pitch: -7, dist: 1600, roll: 4, shiftX: 310},
+    {at: L(123.5) - L(121.5), ease: 'linear', target: [-60, 30, -260], yaw: 10, pitch: -7, dist: 1680, roll: 4, shiftX: 268},
   ];
   const s3: CamKey[] = [
     {at: 0, pos: [-700, 20, 820], lookAt: [260, 420, -1300], focal: 30, roll: -4, shiftX: 320},

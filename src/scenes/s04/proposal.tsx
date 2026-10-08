@@ -80,7 +80,7 @@ export const ProposalSet: React.FC<{lt: number; t: number; f: number; rowsAll?: 
         <div style={{width: 3600, height: 2200, background: `radial-gradient(50% 50% at 50% 50%, rgba(140,107,234,${(0.32 + 0.1 * k).toFixed(3)}), rgba(127,231,255,0.05) 55%, transparent 75%)`}} />
       </Obj>
       {/* card backplate + header */}
-      <Obj x={0} y={0} z={0}>
+      <Obj x={0} y={0} z={0} dof={false}>
         <GlassPane look="frost" w={CARD_W} h={CARD_H} radius={56} glow={0.35} padding="54px 70px">
           <UITheme look="frost">
             <div style={{display: 'flex', alignItems: 'center', gap: 24}}>
@@ -123,7 +123,7 @@ export const ProposalSet: React.FC<{lt: number; t: number; f: number; rowsAll?: 
   );
 };
 
-export const ProposalShot: React.FC<{lt: number; t: number; from: number}> = ({lt, t, from}) => {
+export const ProposalShot: React.FC<{lt: number; t: number; from: number; lite?: boolean}> = ({lt, t, from, lite}) => {
   const f = t + from;
   const keys: CamKey[] = [
     {at: 0, target: [-20, ROW_Y(0) - 40, 120], yaw: -27, pitch: -17, roll: -6, dist: 2080, focal: 32},
@@ -142,7 +142,7 @@ export const ProposalShot: React.FC<{lt: number; t: number; from: number}> = ({l
         <ProposalSet lt={lt} t={t} f={f} />
       </World>
       {glints.map(({i, p, g}) => (g > 0.02 && p.visible ? <Glint key={i} x={p.x} y={p.y} size={200} intensity={1.3 * g} spin={1.2} frame={t} /> : null))}
-      <DustField frame={t} count={70} camY={lt * 2} boost={kick(f) * 0.5} />
+      {!lite && <DustField frame={t} count={70} camY={lt * 2} boost={kick(f) * 0.5} />}
       <HudTag x={150} y={150} t={lt - 2} label="Generated proposal" value={`changes ${Math.min(4, cur + (lt >= ROW_START[cur] + LAND_R ? 1 : 0))} / 4`} />
     </AbsoluteFill>
   );
