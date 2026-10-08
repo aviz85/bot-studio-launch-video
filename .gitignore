@@ -1,3 +1,8 @@
-node_modules/
+node_modules
 out/
+.preview/
 public/designs/
+public/music.wav
+public/mix.wav
+sfx/__pycache__/
+sfx/build/

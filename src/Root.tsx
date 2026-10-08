@@ -1,34 +1,51 @@
 import React from 'react';
-import {AbsoluteFill, Audio, Composition, Sequence, staticFile} from 'remotion';
+import {AbsoluteFill, Audio, Composition, Sequence, staticFile, useCurrentFrame} from 'remotion';
 import {B, DURATION, FPS} from './lib';
-import {Intro, BuildUp, LogoDrop, BuildAI, States, Roles, Judgments, Policies, Clerk} from './scenes/part1';
-import {Breakdown, Dashboard, ChatScene, TimelineScene, BotScript, Factory, Montage, Final} from './scenes/part2';
+import {SCENE_DEFS} from './scenes/registry';
+import {GlobalGrade} from './vfx';
+import {Scene as S01} from './scenes/s01';
+import {Scene as S02} from './scenes/s02';
+import {Scene as S03} from './scenes/s03';
+import {Scene as S04} from './scenes/s04';
+import {Scene as S05} from './scenes/s05';
+import {Scene as S06} from './scenes/s06';
+import {Scene as S07} from './scenes/s07';
+import {Scene as S08} from './scenes/s08';
+import {Scene as S09} from './scenes/s09';
+import {Scene as S10} from './scenes/s10';
 
-type S = [number, number, React.FC<{from: number}> | React.FC];
-const SCENES: S[] = [
-  [0, 16, Intro], [16, 32, BuildUp], [32, 40, LogoDrop], [40, 52, BuildAI], [52, 64, States], [64, 72, Roles],
-  [72, 80, Judgments], [80, 88, Policies], [88, 96, Clerk], [96, 104, Breakdown], [104, 120, Dashboard],
-  [120, 128, ChatScene], [128, 132, TimelineScene], [132, 140, BotScript], [140, 152, Factory], [152, 160, Montage], [160, -1, Final],
-];
+export const SCENE_COMPONENTS: Record<string, React.FC<{from: number; dur: number}>> = {
+  s01: S01, s02: S02, s03: S03, s04: S04, s05: S05, s06: S06, s07: S07, s08: S08, s09: S09, s10: S10,
+};
+
+export const sceneRange = (id: string) => {
+  const d = SCENE_DEFS.find((s) => s.id === id)!;
+  const from = B(d.startBeat);
+  const to = d.endBeat === null ? DURATION : B(d.endBeat);
+  return {from, dur: to - from};
+};
+
+const Grade: React.FC = () => {
+  const f = useCurrentFrame();
+  return <GlobalGrade frame={f} />;
+};
 
 export const Launch: React.FC = () => (
   <AbsoluteFill style={{background: '#05020A'}}>
-    {SCENES.map(([a, b, Comp], i) => {
-      const from = B(a);
-      const dur = (b < 0 ? DURATION : B(b)) - from;
-      const C = Comp as React.FC<{from: number}>;
+    {SCENE_DEFS.map((d) => {
+      const {from, dur} = sceneRange(d.id);
+      const C = SCENE_COMPONENTS[d.id];
       return (
-        <Sequence key={i} from={from} durationInFrames={dur}>
-          <C from={from} />
+        <Sequence key={d.id} from={from} durationInFrames={dur} name={d.title}>
+          <C from={from} dur={dur} />
         </Sequence>
       );
     })}
-    <Audio src={staticFile('music.mp3')} />
+    <Grade />
+    <Audio src={staticFile('mix.wav')} />
   </AbsoluteFill>
 );
 
 export const Root: React.FC = () => (
-  <>
-    <Composition id="Launch" component={Launch} durationInFrames={DURATION} fps={FPS} width={1920} height={1080} />
-  </>
+  <Composition id="Launch" component={Launch} durationInFrames={DURATION} fps={FPS} width={1920} height={1080} />
 );
