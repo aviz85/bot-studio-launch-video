@@ -167,7 +167,7 @@ export const GlitchBlocks: React.FC<{amount: number; step: number; seed?: number
         const w = kind < 0.5 ? 30 + r(5) * 70 : 3 + r(5) * 18;
         const col = kind < 0.33 ? '#ffffff' : kind < 0.66 ? c1 : c2;
         return (
-          <div key={i} style={{position: 'absolute', left: `${kind < 0.5 ? x * 0.3 : x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`, mixBlendMode: kind < 0.5 ? 'screen' : 'difference',
+          <div key={i} style={{position: 'absolute', left: `${kind < 0.5 ? x * 0.3 : x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%`,
             background: kind < 0.5
               ? `linear-gradient(90deg, transparent, ${rgba(col, 0.35 * amount)} 20%, ${rgba(col, 0.55 * amount)} 60%, transparent)`
               : `repeating-linear-gradient(90deg, ${rgba(col, 0.7 * amount)} 0px, ${rgba(col, 0.7 * amount)} 3px, transparent 3px, transparent 7px)`,

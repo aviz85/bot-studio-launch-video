@@ -40,14 +40,20 @@ export type FilmGrainProps = {
   amount?: number;
   /** Grain size in px (1 = per-pixel, 2 = coarser/softer). */
   size?: number;
-  /** Blend: 'overlay' (default, protects blacks) or 'soft-light' (gentler). */
-  blend?: 'overlay' | 'soft-light';
+  /** 'normal' (default): static alpha-coded grain field re-positioned per frame — ~5 ms.
+   *  'overlay' / 'soft-light': per-frame canvas with a blend mode (protects blacks fully) — ~50 ms. */
+  blend?: 'normal' | 'overlay' | 'soft-light';
   frame?: number;
 };
 
-/** Animated monochrome film grain (pattern-filled noise tiles, new random offset each frame). ~5–15 ms. */
-export const FilmGrain: React.FC<FilmGrainProps> = ({amount = 0.08, size = 1.5, blend = 'overlay', frame}) => {
+/** Animated monochrome film grain. */
+export const FilmGrain: React.FC<FilmGrainProps> = ({amount = 0.08, size = 1.5, blend = 'normal', frame}) => {
   const f = useF(frame);
+  if (blend === 'normal') return amount <= 0.001 ? null : <GradeLayer frame={f} grain={amount} grainSize={size} vignette={0} fringe={0} />;
+  return <BlendGrain amount={amount} size={size} blend={blend} frame={f} />;
+};
+
+const BlendGrain: React.FC<{amount: number; size: number; blend: 'overlay' | 'soft-light'; frame: number}> = ({amount, size, blend, frame: f}) => {
   const cw = Math.round(W / size), ch = Math.round(H / size);
   const ref = useCanvasDraw((ctx) => {
     const tiles = getGrainTiles();
@@ -368,7 +374,7 @@ export const EdgeFringe: React.FC<{amount?: number}> = ({amount = 0.5}) =>
   );
 
 /** Global finishing pass rendered above the whole film by Root: vignette with a faint lateral colour fringe,
- *  animated film grain and the scheduled letterbox — all in one cheap layer stack (~35 ms/frame in renderMedia). Tune via GRADE. */
+ *  animated film grain and the scheduled letterbox — all in one cheap layer stack (~16 ms/frame in renderMedia). Tune via GRADE. */
 export const GlobalGrade: React.FC<{frame: number}> = ({frame}) => {
   let gm = 1;
   for (const [a, b, m] of GRADE.grainBoost) if (frame >= a && frame < b) gm = m;

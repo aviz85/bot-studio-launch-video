@@ -1,6 +1,6 @@
 /* Shockwaves and energy bursts. */
 import React from 'react';
-import {VC, W, H, clamp01, colorOf, easeOutExpo, full, glowSprite, impulse, mix, mixHex, noise1, prng, rgba, useCanvasDraw, useF} from './util';
+import {VC, W, H, clamp01, colorOf, easeOutExpo, full, glowSprite, impulse, mix, mixHex, noise1, prng, radialFill, rgba, useCanvasDraw, useF, type CanvasBlend} from './util';
 
 /* ======================================================================
  * Shockwave
@@ -31,63 +31,113 @@ export type ShockwaveProps = {
   refract?: boolean;
   /** Bright flash core at the origin. */
   core?: boolean;
+  /** Layer compositing (see CanvasBlend). 'normal' required for the dark band of `distort`. */
+  blend?: CanvasBlend;
   frame?: number;
 };
 
-/** Expanding energy ring(s) with a hot leading edge and a soft trailing glow (+ optional refraction band). */
+/** Expanding energy ring(s) with a hot leading edge, cyan outer fringe and soft trailing glow; brightness varies around the
+ *  circumference (rotating noise). One canvas (normal compositing by default) + an optional DOM backdrop-filter refraction band. */
 export const Shockwave: React.FC<ShockwaveProps> = ({
-  x, y, at, dur = 42, radius = 1100, thickness = 90, color, secondary, rings = 2, gap = 5, intensity = 1, squash = 1, distort = false, refract = false, core = true, frame,
+  x, y, at, dur = 42, radius = 1100, thickness = 90, color, secondary, rings = 2, gap = 5, intensity = 1, squash = 1, distort = false, refract = false, core = true, blend = 'normal', frame,
 }) => {
   const f = useF(frame);
   const col = colorOf(color, VC.cyan);
   const sec = colorOf(secondary, VC.violet);
   const hot = mixHex(col, '#ffffff', 0.7);
-  if (f < at || f > at + dur + gap * (rings - 1) + 2) return null;
-  const items: React.ReactNode[] = [];
-  for (let i = 0; i < rings; i++) {
-    const t = (f - at - i * gap) / dur;
-    if (t <= 0 || t >= 1) continue;
-    const e = easeOutExpo(t);
-    const r = mix(radius * 0.04, radius * (1 - i * 0.12), e);
-    const th = thickness * (0.35 + 0.65 * e) * (1 - i * 0.2);
-    const a = intensity * Math.pow(1 - t, 1.6) * (i === 0 ? 1 : 0.55);
-    const R = r + th * 0.6 + 4;
-    const px = (v: number) => `${Math.max(0, v).toFixed(1)}px`;
-    const g = `radial-gradient(circle closest-side, transparent ${px(r - th * 1.25)}, ${rgba(sec, 0.04 * a)} ${px(r - th * 0.85)}, ${rgba(col, 0.1 * a)} ${px(r - th * 0.4)}, ${rgba(hot, 0.38 * a)} ${px(r - th * 0.1)}, ${rgba(hot, 0.9 * a)} ${px(r - 5)}, ${rgba('#ffffff', Math.min(1, 1.3 * a))} ${px(r - 2)}, ${rgba('#ffffff', Math.min(1, 1.3 * a))} ${px(r + 0.5)}, ${rgba(col, 0.7 * a)} ${px(r + 3.5)}, ${rgba(VC.magenta, 0.14 * a)} ${px(r + th * 0.12)}, ${rgba(sec, 0.04 * a)} ${px(r + th * 0.28)}, transparent ${px(r + th * 0.45)})`;
-    // organic brightness variation around the circumference (rotating noisy conic mask)
-    const stops: string[] = [];
-    for (let k = 0; k <= 36; k++) {
-      const n = noise1((k % 36) * 0.55 + i * 7, 17) * 0.7 + noise1((k % 36) * 1.7 + 3, 29) * 0.3;
-      stops.push(`rgba(0,0,0,${(0.35 + 0.65 * n).toFixed(3)}) ${k * 10}deg`);
-    }
-    const nm = `conic-gradient(from ${(f * 0.8 + i * 40).toFixed(1)}deg, ${stops.join(', ')})`;
-    items.push(
-      <div key={i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, background: g, transform: squash !== 1 ? `scaleY(${squash})` : undefined, mixBlendMode: 'screen', maskImage: nm, WebkitMaskImage: nm}} />,
-    );
-    if (distort) {
-      const dg = `radial-gradient(circle closest-side, transparent ${px(r - th * 0.75)}, ${rgba('#05020A', 0.35 * a)} ${px(r - th * 0.4)}, ${rgba('#05020A', 0.12 * a)} ${px(r - 14)}, ${rgba(VC.magenta, 0.55 * a)} ${px(r - 9)}, transparent ${px(r - 5)}, transparent ${px(r + 6)}, ${rgba(VC.cyan, 0.5 * a)} ${px(r + 10)}, transparent ${px(r + 16)})`;
-      items.unshift(
-        <div key={'c' + i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, background: dg, transform: squash !== 1 ? `scaleY(${squash})` : undefined}} />,
-      );
-    }
-    if (refract && i === 0) {
-      const m = `radial-gradient(circle closest-side, transparent ${Math.max(0, r - th * 0.9)}px, black ${r - th * 0.35}px, black ${r - 2}px, transparent ${r + th * 0.15}px)`;
-      items.unshift(
-        <div key={'d' + i} style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, transform: squash !== 1 ? `scaleY(${squash})` : undefined,
-          backdropFilter: `blur(${(5 * (1 - t) + 1.5).toFixed(1)}px) brightness(${(1 + 0.35 * a).toFixed(3)}) saturate(1.3)`,
-          maskImage: m, WebkitMaskImage: m}} />,
-      );
+  const active = f >= at && f <= at + dur + gap * (rings - 1) + 2;
+  type Ring = {r: number; th: number; a: number; t: number};
+  const list: Ring[] = [];
+  if (active) {
+    for (let i = 0; i < rings; i++) {
+      const t = (f - at - i * gap) / dur;
+      if (t <= 0 || t >= 1) continue;
+      const e = easeOutExpo(t);
+      list.push({r: mix(radius * 0.04, radius * (1 - i * 0.12), e), th: thickness * (0.35 + 0.65 * e) * (1 - i * 0.2), a: intensity * Math.pow(1 - t, 1.6) * (i === 0 ? 1 : 0.55), t});
     }
   }
-  const ce = core ? impulse(f, at, 1, 4) * intensity : 0;
+  const ref = useCanvasDraw((ctx) => {
+    if (!active) return;
+    // fill a radial gradient only inside the annulus [stops[0][0], R] (the gradient is transparent elsewhere) — far fewer pixels
+    const ringFill = (r: number, R: number, stops: [number, string][]) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(1, squash);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+      for (const [v, c] of stops) g.addColorStop(clamp01(v / R), c);
+      ctx.fillStyle = g;
+      const inner = Math.max(0, stops[0][0] - 1);
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      if (inner > 0) {
+        ctx.moveTo(inner, 0);
+        ctx.arc(0, 0, inner, Math.PI * 2, 0, true);
+      }
+      ctx.fill();
+      ctx.restore();
+    };
+    ctx.globalCompositeOperation = 'lighter';
+    for (const {r, th, a} of list) {
+      const R = r + th * 0.45 + 4;
+      ringFill(r, R, [
+        [Math.max(0, r - th * 1.25), 'rgba(0,0,0,0)'], [Math.max(0, r - th * 0.85), rgba(sec, 0.04 * a)], [Math.max(0, r - th * 0.4), rgba(col, 0.1 * a)],
+        [Math.max(0, r - th * 0.1), rgba(hot, 0.38 * a)], [Math.max(0, r - 5), rgba(hot, 0.9 * a)], [Math.max(0, r - 2), rgba('#ffffff', Math.min(1, 1.3 * a))],
+        [r + 0.5, rgba('#ffffff', Math.min(1, 1.3 * a))], [r + 3.5, rgba(col, 0.7 * a)], [r + th * 0.12, rgba(VC.magenta, 0.14 * a)], [r + th * 0.28, rgba(sec, 0.04 * a)], [R, 'rgba(0,0,0,0)'],
+      ]);
+    }
+    // organic brightness variation around the circumference: rotating noisy conic mask (rings only)
+    const cg = ctx.createConicGradient(((f * 0.8) * Math.PI) / 180, x, y);
+    for (let k = 0; k <= 36; k++) {
+      const n = noise1((k % 36) * 0.55, 17) * 0.7 + noise1((k % 36) * 1.7 + 3, 29) * 0.3;
+      cg.addColorStop(k / 36, `rgba(0,0,0,${(0.35 + 0.65 * n).toFixed(3)})`);
+    }
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = cg;
+    ctx.beginPath();
+    for (const {r, th} of list) {
+      const R = r + th * 0.45 + 4, inner = Math.max(0, r - th * 1.25 - 1);
+      ctx.moveTo(x + R, y);
+      ctx.ellipse(x, y, R, R * squash, 0, 0, Math.PI * 2);
+      if (inner > 0) {
+        ctx.moveTo(x + inner, y);
+        ctx.ellipse(x, y, inner, inner * squash, 0, Math.PI * 2, 0, true);
+      }
+    }
+    ctx.fill(); // nonzero: outer CW, inner CCW → union of annuli (overlaps stay filled)
+    if (distort) {
+      for (const {r, th, a} of list) {
+        const R = r + 20;
+        // chromatic double edge (adds light)
+        ctx.globalCompositeOperation = 'lighter';
+        ringFill(r, R, [[Math.max(0, r - 14), 'rgba(0,0,0,0)'], [Math.max(0, r - 9), rgba(VC.magenta, 0.55 * a)], [Math.max(0, r - 5), 'rgba(0,0,0,0)'], [r + 6, 'rgba(0,0,0,0)'], [r + 10, rgba(VC.cyan, 0.5 * a)], [r + 16, 'rgba(0,0,0,0)'], [R, 'rgba(0,0,0,0)']]);
+        // dark refraction band behind the ring (darkens the scene: needs blend 'normal')
+        ctx.globalCompositeOperation = 'destination-over';
+        ringFill(r, r + 2, [[Math.max(0, r - th * 0.75), 'rgba(5,2,10,0)'], [Math.max(0, r - th * 0.4), rgba('#05020A', 0.35 * a)], [Math.max(0, r - 14), rgba('#05020A', 0.12 * a)], [r + 2, 'rgba(5,2,10,0)']]);
+      }
+    }
+    const ce = core ? impulse(f, at, 1, 4) * intensity : 0;
+    if (ce > 0.01) {
+      ctx.globalCompositeOperation = 'lighter';
+      radialFill(ctx, x, y, 300, [[0, rgba('#ffffff', clamp01(ce))], [0.1, rgba(hot, 0.75 * clamp01(ce))], [0.28, rgba(col, 0.28 * clamp01(ce))], [0.55, rgba(sec, 0.07 * clamp01(ce))], [1, rgba(sec, 0)]]);
+    }
+  });
+  if (!active) return null;
+  const lead = list[0];
   return (
-    <div style={{...full, overflow: 'hidden'}}>
-      {items}
-      {ce > 0.01 && (
-        <div style={{position: 'absolute', left: x - 300, top: y - 300, width: 600, height: 600, mixBlendMode: 'screen', opacity: clamp01(ce),
-          background: `radial-gradient(circle closest-side, #fff 0%, ${rgba(hot, 0.75)} 10%, ${rgba(col, 0.28)} 28%, ${rgba(sec, 0.07)} 55%, transparent 100%)`}} />
-      )}
-    </div>
+    <>
+      {refract && lead && (() => {
+        const {r, th, a, t} = lead;
+        const R = r + th * 0.6 + 4;
+        const m = `radial-gradient(circle closest-side, transparent ${Math.max(0, r - th * 0.9)}px, black ${Math.max(0, r - th * 0.35)}px, black ${Math.max(0, r - 2)}px, transparent ${r + th * 0.15}px)`;
+        return (
+          <div style={{...full, overflow: 'hidden'}}>
+            <div style={{position: 'absolute', left: x - R, top: y - R, width: R * 2, height: R * 2, transform: squash !== 1 ? `scaleY(${squash})` : undefined,
+              backdropFilter: `blur(${(5 * (1 - t) + 1.5).toFixed(1)}px) brightness(${(1 + 0.35 * a).toFixed(3)}) saturate(1.3)`, maskImage: m, WebkitMaskImage: m}} />
+          </div>
+        );
+      })()}
+      <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend}} />
+    </>
   );
 };
 
@@ -115,13 +165,15 @@ export type EnergyBurstProps = {
   intensity?: number;
   /** Vertical squash of the burst (e.g. 0.5 for a floor-plane burst). */
   squash?: number;
+  /** Layer compositing (see CanvasBlend). */
+  blend?: CanvasBlend;
   seed?: number;
   frame?: number;
 };
 
 /** Canvas2D particle explosion: drag-decelerated sparks drawn as motion-blurred streaks with hot heads. */
 export const EnergyBurst: React.FC<EnergyBurstProps> = ({
-  x, y, at, dur = 55, count = 160, distance = 720, spread = 360, direction = 0, gravity = 0, color, secondary, size = 1, intensity = 1, squash = 1, seed = 11, frame,
+  x, y, at, dur = 55, count = 160, distance = 720, spread = 360, direction = 0, gravity = 0, color, secondary, size = 1, intensity = 1, squash = 1, blend = 'normal', seed = 11, frame,
 }) => {
   const f = useF(frame);
   const col = colorOf(color, VC.cyan);
@@ -132,6 +184,8 @@ export const EnergyBurst: React.FC<EnergyBurstProps> = ({
     if (!active) return;
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'round';
+    const fl = impulse(f, at, 1, 5) * intensity;
+    if (fl > 0.01) radialFill(ctx, x, y, 300, [[0, rgba('#ffffff', clamp01(fl))], [0.25, rgba(col, 0.5 * clamp01(fl))], [0.6, rgba(sec, 0.12 * clamp01(fl))], [1, rgba(sec, 0)]]);
     const rnd = prng(seed);
     const sprA = glowSprite(col, 0.7);
     const sprB = glowSprite(sec, 0.7);
@@ -173,14 +227,5 @@ export const EnergyBurst: React.FC<EnergyBurstProps> = ({
     }
   });
   if (!active) return null;
-  const fl = impulse(f, at, 1, 5) * intensity;
-  return (
-    <div style={{...full, mixBlendMode: 'screen'}}>
-      {fl > 0.01 && (
-        <div style={{position: 'absolute', left: x - 300, top: y - 300, width: 600, height: 600, opacity: clamp01(fl),
-          background: `radial-gradient(circle closest-side, #fff 0%, ${rgba(col, 0.5)} 25%, ${rgba(sec, 0.12)} 60%, transparent 100%)`}} />
-      )}
-      <canvas ref={ref} width={W} height={H} style={{...full}} />
-    </div>
-  );
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend}} />;
 };

@@ -1,6 +1,6 @@
 /* Light streaks, swooshes, warp speed lines, light leaks, god rays and volumetric beams. */
 import React from 'react';
-import {CX, CY, H, VC, W, clamp01, colorOf, easeInOutCubic, fbm1, full, glowSprite, hash, lin, mix, mixHex, noise1, prng, radialFill, rgba, scratchCanvas, useCanvasDraw, useF} from './util';
+import {CX, CY, H, VC, W, clamp01, colorOf, easeInOutCubic, fbm1, full, glowSprite, hash, lin, mix, mixHex, noise1, prng, radialFill, rgba, scratchCanvas, useCanvasDraw, useF, type CanvasBlend} from './util';
 
 /* ======================================================================
  * LightStreak — bundle of fast light streaks crossing the frame
@@ -145,12 +145,14 @@ export type SpeedLinesProps = {
   glow?: number;
   /** Canvas resolution multiplier (0.5 = cheaper, softer). */
   res?: number;
+  /** Layer compositing (see CanvasBlend). */
+  blend?: CanvasBlend;
   seed?: number;
   frame?: number;
 };
 
 /** Hyperspace streaks: 3D star points flying toward the camera, drawn as radial motion-blurred lines. */
-export const SpeedLines: React.FC<SpeedLinesProps> = ({intensity = 1, x = CX, y = CY, count = 340, speed = 0.06, travel, color, secondary, glow = 0.6, res = 1, seed = 4, frame}) => {
+export const SpeedLines: React.FC<SpeedLinesProps> = ({intensity = 1, x = CX, y = CY, count = 340, speed = 0.06, travel, color, secondary, glow = 0.6, res = 1, blend = 'normal', seed = 4, frame}) => {
   const f = useF(frame);
   const col = colorOf(color, VC.cyan);
   const sec = colorOf(secondary, VC.lilac);
@@ -164,6 +166,10 @@ export const SpeedLines: React.FC<SpeedLinesProps> = ({intensity = 1, x = CX, y 
     const tr = travel ?? f * speed * (0.4 + 0.6 * Math.min(1.5, I));
     const rnd = prng(seed);
     const len = 0.08 + 1.1 * I * I;
+    if (glow > 0) {
+      const ga = glow * Math.min(1, I);
+      radialFill(ctx, x, y, 1100, [[0, rgba('#ffffff', 0.55 * ga)], [0.08, rgba(col, 0.22 * ga)], [0.3, rgba(VC.violet, 0.08 * ga)], [0.6, rgba(VC.violet, 0)]]);
+    }
     ctx.lineCap = 'round';
     for (let i = 0; i < count; i++) {
       const th = rnd() * Math.PI * 2;
@@ -194,12 +200,7 @@ export const SpeedLines: React.FC<SpeedLinesProps> = ({intensity = 1, x = CX, y 
     }
   });
   if (I < 0.003) return null;
-  return (
-    <div style={{...full, mixBlendMode: 'screen'}}>
-      {glow > 0 && <div style={{...full, background: `radial-gradient(circle at ${x}px ${y}px, ${rgba('#ffffff', 0.55 * glow * Math.min(1, I))} 0%, ${rgba(col, 0.22 * glow * Math.min(1, I))} 8%, ${rgba(VC.violet, 0.08 * glow * Math.min(1, I))} 30%, transparent 60%)`}} />}
-      <canvas ref={ref} width={Math.round(W * res)} height={Math.round(H * res)} style={{...full}} />
-    </div>
-  );
+  return <canvas ref={ref} width={Math.round(W * res)} height={Math.round(H * res)} style={{...full, mixBlendMode: blend}} />;
 };
 
 /* ======================================================================
@@ -294,6 +295,8 @@ export type GodRaysProps = {
   dust?: number;
   /** Hot glow at the source 0..1. */
   core?: number;
+  /** Layer compositing (see CanvasBlend). */
+  blend?: CanvasBlend;
   seed?: number;
   frame?: number;
 };
@@ -317,9 +320,9 @@ const beamAlpha = (deg: number, f: number, lobes: number, seed: number, speed: n
 };
 
 /** God rays: soft volumetric shafts from a source (behind a logo, through panels), drifting slowly, with lit dust.
- *  Single screen-blended canvas: shafts at half-res (conic gradients × radial falloff), dust at full res. */
+ *  Single canvas: shafts at half-res (conic gradients × radial falloff), dust at full res. */
 export const GodRays: React.FC<GodRaysProps> = ({
-  x = CX, y = CY, intensity = 1, color, secondary, lobes = 22, spread = 360, direction = 90, length = 1300, speed = 0.08, contrast = 2.6, dust = 1, core = 0.8, seed = 7, frame,
+  x = CX, y = CY, intensity = 1, color, secondary, lobes = 22, spread = 360, direction = 90, length = 1300, speed = 0.08, contrast = 2.6, dust = 1, core = 0.8, blend = 'normal', seed = 7, frame,
 }) => {
   const f = useF(frame);
   const col = colorOf(color, VC.lilac);
@@ -378,7 +381,7 @@ export const GodRays: React.FC<GodRaysProps> = ({
     }
   });
   if (I < 0.003) return null;
-  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: 'screen'}} />;
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend}} />;
 };
 
 /* ======================================================================
@@ -397,32 +400,41 @@ export type Beam = {
   /** Sweep amplitude in degrees (oscillation). */
   sweep?: number;
 };
-export type VolumetricBeamsProps = {beams: Beam[]; intensity?: number; frame?: number; seed?: number};
+export type VolumetricBeamsProps = {beams: Beam[]; intensity?: number; blend?: CanvasBlend; frame?: number; seed?: number};
 
-/** Soft cone light beams with radial falloff and a hot apex. Animate `angle` or use `sweep`. */
-export const VolumetricBeams: React.FC<VolumetricBeamsProps> = ({beams, intensity = 1, frame, seed = 5}) => {
+/** Soft cone light beams (stage lights / light through panels) with radial falloff and a hot apex. Animate `angle` or use `sweep`.
+ *  One canvas: each cone drawn at half-res (conic profile × radial falloff) and added. */
+export const VolumetricBeams: React.FC<VolumetricBeamsProps> = ({beams, intensity = 1, blend = 'normal', frame, seed = 5}) => {
   const f = useF(frame);
+  const ref = useCanvasDraw((ctx) => {
+    if (intensity < 0.003) return;
+    const {c: A, ctx: acc} = scratchCanvas('beamsAcc', W / 2, H / 2);
+    acc.globalCompositeOperation = 'lighter';
+    const apex: [number, number, string, number][] = [];
+    beams.forEach((b, i) => {
+      const L = b.length ?? 1400;
+      const w = b.width ?? 16;
+      const col = colorOf(b.color, VC.lilac);
+      const ang = b.angle + (b.sweep ?? 0) * Math.sin(f * 0.012 + hash(seed + i) * 6.28);
+      const a = (b.intensity ?? 1) * intensity * (0.9 + 0.1 * noise1(f * 0.05, seed + i));
+      const {c: S, ctx: s} = scratchCanvas('beams', W / 2, H / 2);
+      s.setTransform(0.5, 0, 0, 0.5, 0, 0);
+      const g = s.createConicGradient(((ang - w) * Math.PI) / 180, b.x, b.y);
+      const st = (k: number, al: number, cc = col) => g.addColorStop((k * w) / 360, rgba(cc, al * a));
+      st(0, 0); st(0.15, 0.03); st(0.4, 0.1); st(0.7, 0.2, mixHex(col, '#fff', 0.2)); st(1, 0.27, mixHex(col, '#fff', 0.45));
+      st(1.3, 0.2, mixHex(col, '#fff', 0.2)); st(1.6, 0.1); st(1.85, 0.03); st(2, 0);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      s.fillStyle = g;
+      s.fillRect(0, 0, W, H);
+      s.globalCompositeOperation = 'destination-in';
+      radialFill(s, b.x, b.y, L, [[0, 'rgba(0,0,0,0.5)'], [0.08, 'rgba(0,0,0,1)'], [0.3, 'rgba(0,0,0,0.75)'], [0.65, 'rgba(0,0,0,0.3)'], [1, 'rgba(0,0,0,0)']]);
+      acc.drawImage(S, 0, 0);
+      apex.push([b.x, b.y, col, a]);
+    });
+    ctx.drawImage(A, 0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [bx, by, col, a] of apex) radialFill(ctx, bx, by, 120, [[0, rgba('#ffffff', 0.8 * clamp01(a))], [0.35, rgba(col, 0.3 * clamp01(a))], [1, rgba(col, 0)]]);
+  });
   if (intensity < 0.003) return null;
-  return (
-    <div style={{...full, overflow: 'hidden', mixBlendMode: 'screen'}}>
-      {beams.map((b, i) => {
-        const L = b.length ?? 1400;
-        const w = b.width ?? 16;
-        const col = colorOf(b.color, VC.lilac);
-        const ang = b.angle + (b.sweep ?? 0) * Math.sin(f * 0.012 + hash(seed + i) * 6.28);
-        const a = (b.intensity ?? 1) * intensity * (0.9 + 0.1 * noise1(f * 0.05, seed + i));
-        // conic: 0deg points up in CSS; our angle 0 = right → css = angle + 90
-        const c = ang + 90;
-        const st = (k: number, al: number, cc = col) => `${rgba(cc, al * a)} ${(c - w + k * w).toFixed(2)}deg`;
-        const g = `conic-gradient(from 0deg at 50% 50%, transparent ${(c - w - 0.01).toFixed(2)}deg, ${st(0.15, 0.03)}, ${st(0.4, 0.1)}, ${st(0.7, 0.2, mixHex(col, '#fff', 0.2))}, ${st(1, 0.27, mixHex(col, '#fff', 0.45))}, ${st(1.3, 0.2, mixHex(col, '#fff', 0.2))}, ${st(1.6, 0.1)}, ${st(1.85, 0.03)}, transparent ${(c + w + 0.01).toFixed(2)}deg)`;
-        const mask = 'radial-gradient(circle closest-side, rgba(0,0,0,0.5) 0%, black 8%, rgba(0,0,0,0.75) 30%, rgba(0,0,0,0.3) 65%, transparent 100%)';
-        return (
-          <React.Fragment key={i}>
-            <div style={{position: 'absolute', left: b.x - L, top: b.y - L, width: L * 2, height: L * 2, background: g, maskImage: mask, WebkitMaskImage: mask, mixBlendMode: 'screen'}} />
-            <div style={{position: 'absolute', left: b.x - 120, top: b.y - 120, width: 240, height: 240, opacity: clamp01(a), background: `radial-gradient(circle closest-side, rgba(255,255,255,0.8) 0%, ${rgba(col, 0.3)} 35%, transparent 100%)`}} />
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend}} />;
 };

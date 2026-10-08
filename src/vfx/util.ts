@@ -133,6 +133,10 @@ export const useF = (frame?: number) => {
 /** DOM-safe unique id for SVG defs. */
 export const useSafeId = (prefix = 'vfx') => prefix + useId().replace(/[^a-zA-Z0-9]/g, '');
 
+/** Compositing for canvas light layers. 'normal' composites the premultiplied, additively drawn canvas with source-over —
+ *  identical to screen for white light, near-identical for tinted light, and ~10× cheaper in software rendering (~4 ms vs ~40 ms
+ *  per full-frame layer). Use 'screen' only when tinted light must stay purely additive over bright UI. */
+export type CanvasBlend = 'normal' | 'screen' | 'plus-lighter';
 export const full: React.CSSProperties = {position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none'};
 
 /** Canvas that is fully redrawn on every render (deterministic per frame). */

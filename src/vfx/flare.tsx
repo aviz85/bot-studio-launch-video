@@ -1,8 +1,9 @@
-/* Anamorphic lens flares (single additive canvas), flare bursts and glints. Screen-blended. */
+/* Anamorphic lens flares (single additive canvas), flare bursts and glints. */
 import React from 'react';
 import {CX, CY, H, VC, W, clamp01, colorOf, easeOutExpo, fbm1, full, hash, impulse, mixHex, radialFill, rgba, scratchCanvas, useCanvasDraw, useF} from './util';
 
 type Blend = 'screen' | 'plus-lighter' | 'normal' | 'lighten';
+/* LensFlare is a canvas: its `blend` defaults to 'normal' (see CanvasBlend in util — same look as screen, ~10× cheaper). */
 
 /** Absolutely positioned element centred at (x, y). */
 const At: React.FC<{x: number; y: number; w: number; h: number; bg: string; rot?: number; clip?: string; o?: number; mask?: string; blend?: Blend}> = ({x, y, w, h, bg, rot = 0, clip, o = 1, mask, blend = 'screen'}) =>
@@ -85,6 +86,8 @@ export type LensFlareProps = {
   center?: [number, number];
   /** Subtle intensity shimmer 0..1. */
   flicker?: number;
+  /** Full-frame glare around the source 0..1 (FlareBurst drives this on impact). */
+  glare?: number;
   seed?: number;
   frame?: number;
   blend?: Blend;
@@ -92,17 +95,17 @@ export type LensFlareProps = {
 };
 
 /** Anamorphic lens flare: hot core, long horizontal streaks, parallel violet streaks, starburst rays,
- *  iris ghosts mirrored through the optical centre and a rainbow ring ghost. One canvas, additive inside, screen-blended. */
+ *  iris ghosts mirrored through the optical centre and a rainbow ring ghost. One canvas, additive inside (normal compositing by default — see CanvasBlend). */
 export const LensFlare: React.FC<LensFlareProps> = ({
   x, y, intensity = 1, scale = 1, streak = 1, color, secondary, ghosts = 1, rays = 14, ring = true, veil = 0.6,
-  center = [CX, CY], flicker = 0.4, seed = 1, frame, blend = 'screen', style,
+  center = [CX, CY], flicker = 0.4, glare = 0, seed = 1, frame, blend = 'normal', style,
 }) => {
   const f = useF(frame);
   const col = colorOf(color, VC.cyan);
   const sec = colorOf(secondary, VC.violet);
   const I = Math.max(0, intensity) * (1 + flicker * 0.1 * fbm1(f * 0.11, seed));
   const ref = useCanvasDraw((ctx) => {
-    if (I < 0.005) return;
+    if (I < 0.005 && glare < 0.003) return;
     const s = scale;
     const L = 2600 * s * streak;
     const hot = mixHex(col, '#ffffff', 0.65);
@@ -113,6 +116,10 @@ export const LensFlare: React.FC<LensFlareProps> = ({
     const g = ghosts * (0.55 + 0.45 * off);
     const rot = (f * 0.06 + seed * 37) % 360;
     ctx.globalCompositeOperation = 'lighter';
+    if (glare > 0.003) {
+      const v = Math.min(1, glare);
+      radialFill(ctx, x, y, 1400, [[0, rgba('#ffffff', 0.95 * v)], [0.09, rgba(mixHex(col, '#ffffff', 0.5), 0.55 * v)], [0.26, rgba(col, 0.2 * v)], [0.55, rgba(VC.violet, 0.06 * v)], [1, rgba(VC.violet, 0)]]);
+    }
     // horizontal haze band
     if (veil > 0) {
       const rx = Math.max(1920, L * 0.6), a = kg(veil * 0.55);
@@ -179,7 +186,7 @@ export const LensFlare: React.FC<LensFlareProps> = ({
       }
     }
   });
-  if (I < 0.005) return null;
+  if (I < 0.005 && glare < 0.003) return null;
   return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend, ...style}} />;
 };
 
@@ -207,17 +214,8 @@ export const FlareBurst: React.FC<FlareBurstProps> = ({at, dur = 70, peak = 1.8,
   const I = (peak * e + sustain * clamp01(t / 10)) * tail;
   const grow = 0.25 + 1.15 * easeOutExpo(t / (dur * 0.45));
   const punch = 1 + 0.55 * Math.exp(-t / 5);
-  const col = colorOf(color, VC.cyan);
   const v = flash * Math.pow(impulse(f, at, 2, 7), 1.4);
-  return (
-    <>
-      <LensFlare {...rest} x={x} y={y} color={color} frame={f} intensity={I} scale={scale * punch} streak={streak * grow} />
-      {v > 0.003 && (
-        <div style={{...full, mixBlendMode: 'screen', opacity: Math.min(1, v),
-          background: `radial-gradient(circle 1400px at ${x}px ${y}px, rgba(255,255,255,0.95) 0%, ${rgba(mixHex(col, '#ffffff', 0.5), 0.55)} 9%, ${rgba(col, 0.2)} 26%, ${rgba(VC.violet, 0.06)} 55%, transparent 100%)`}} />
-      )}
-    </>
-  );
+  return <LensFlare {...rest} x={x} y={y} color={color} frame={f} intensity={I} scale={scale * punch} streak={streak * grow} glare={v} />;
 };
 
 export type GlintProps = {

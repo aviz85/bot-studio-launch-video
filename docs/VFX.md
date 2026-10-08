@@ -22,7 +22,7 @@ Showcase: `src/demos/vfx.tsx` (10 vignettes × 60 frames) →
 | **Timing** | Every component has an optional `frame` prop. Default = `useCurrentFrame()` (**local** to your scene Sequence). `at` / `start` props are on the same timeline as `frame`. For a scene starting at `from`, the drop at global `B(32)` is local `B(32) - from`. |
 | **Audio** | Audio-reactive components (`SpaceBackdrop`) take `from` (your scene's `from`) so they can read `band/kick` on the GLOBAL frame. Others take `boost` (0..1) — feed `kick(f + from)` yourself. |
 | **Transients** | Effects with `at`/`start` return `null` (zero cost) outside their active window, so it is fine to leave them mounted for the whole scene. |
-| **Blending** | Light effects are screen/additive (`mix-blend-mode: screen`; canvases draw with `lighter` inside). They brighten whatever is *below them in the same stacking context* — put them above the layers they should light. |
+| **Blending** | Light is drawn additively (`lighter`) into transparent canvases. Canvas effects composite with `blend='normal'` by default: for premultiplied light that is mathematically identical to `screen` for white light and near-identical for tinted light, but **~10× cheaper** in our software renderer (~4 ms vs ~40 ms per full-frame layer). Pass `blend="screen"` only if a tinted light must stay purely additive over bright UI. DOM effects (LightLeak, LightStreak, Swoosh, Flash) use real `mix-blend-mode: screen`. Effects light whatever is *below them in the same stacking context* — mount them above the layers they should light. |
 | **Wrappers** | `Bloom`, `ChromaticAberration`, `Glitch` wrap children. **Children using `backdrop-filter` (frosted glass) lose their backdrop inside a filtered wrapper** (they only see siblings inside the wrapper) — wrap the glass *and* what is behind it, or apply the wrapper to the content layer only. `Bloom` renders its children 2–3× (canvases inside redraw per copy). |
 | **Colours** | Colour props accept hex or names: `cyan #7FE7FF`, `violet #8C6BEA`, `lilac #CDBBFF`, `pistachio #E7F4B9`, `amber`, `magenta`, `rose`, `ice`, `white`. Palette object: `VC`. |
 | **Determinism** | Use `seed` to get a different but repeatable variation (flares, particles, glitch, leaks). |
@@ -33,7 +33,35 @@ Measured on the 4-core build box (shared with other renders, so ±15%). **Δ vid
 `renderMedia` at concurrency 2 (the real render path; ≈ half the CPU cost), effect in its active phase, versus an empty frame.
 **Still** = `renderStill --scale 1` total including ≈ 350 ms screenshot/encode baseline (stills re-raster everything, so they over-state static layers).
 
-COSTS_TABLE
+| Effect | Δ video ms/frame | Notes |
+| --- | ---: | --- |
+| `GlobalGrade` | **16** | every frame; static vignette + transform-moved grain field + letterbox |
+| `SpaceBackdrop` | 15 | opaque single canvas (soft layers half-res); nebula texture generated once per page and cached |
+| `HoloGrid` / `HoloTunnel` | 15 / 9 | Canvas2D projection |
+| `DustField` / `Bokeh` / `Sparkles` / `Embers` | 0–2 each | sprites on one canvas |
+| `EnergyBurst` | 4 | |
+| `Glint`, `HUDFrame`, `Vignette`, `Letterbox` | 0–3 | |
+| `DataRain` | 12 | ~1–2k `fillText` |
+| `LightStreak` | 13 | |
+| `Reticle` + `DataTicker` | 13 | |
+| `Scanlines` | 15 | |
+| `GodRays` | 18 | |
+| `SpeedLines` | 19 | |
+| `VolumetricBeams` (2 beams) | 19 | |
+| `Shockwave` / `distort` | 19 / 23 | |
+| `FilmGrain` (`blend='normal'`) | 21 | `'overlay'` ≈ 50 |
+| `Swoosh` | 24 | short-lived |
+| `Flash` (`bloom`) | 26 | short-lived |
+| `ChromaticAberration` | 33 | full-frame SVG filter (still +80) |
+| `LensFlare` | 47 | |
+| `LightLeak` | 47 | DOM screen blobs; short-lived |
+| `Bloom` / `cheap` | 50 / 10 | depends on children's area |
+| `FlareBurst` | 67 | during its first ~30 frames, then less |
+| `Glitch` | ≈ 85 | full-frame SVG filter (still +125…+160; more if frosted glass is inside). Size the wrapper to the content via `style` to shrink the filter area |
+| `Shockwave refract` | **173** | backdrop-filter — one hero hit only |
+
+Full-res stills of the combined showcase vignettes (several effects + UI + `GlobalGrade`, incl. baseline): **600–960 ms**;
+the glitch vignette (Glitch over a frosted panel) ≈ 1.1–1.3 s. Baseline empty frame: ~65 ms (video), ~350 ms (still).
 
 Budget guidance: the director's budget is ~1.2 s/frame. A typical rich shot — `SpaceBackdrop + HoloGrid + DustField + LensFlare + UI + GlobalGrade` — stays well inside it.
 Avoid stacking more than one of `Glitch` / `ChromaticAberration` / `Bloom` over the full frame at the same time, and keep `Shockwave refract` for one hero moment.
@@ -45,7 +73,7 @@ Avoid stacking more than one of `Glitch` / `ChromaticAberration` / `Bloom` over 
 ### `LensFlare`
 Anamorphic flare: hot white core, hairline horizontal streak (cyan) with glow + blue haze, two faint parallel violet streaks,
 a vertical spike, two-layer starburst (seeded irregular rays, slowly counter-rotating), iris ghosts (discs, rings, hexagons,
-octagons — pistachio/magenta/amber/violet) mirrored through the optical centre, and a partial rainbow ring ghost. One canvas (additive inside), screen-blended.
+octagons — pistachio/magenta/amber/violet) mirrored through the optical centre, and a partial rainbow ring ghost. One canvas, additive inside (`blend='normal'` compositing by default — see Blending).
 
 | prop | type | default | notes |
 | --- | --- | --- | --- |
@@ -60,7 +88,7 @@ octagons — pistachio/magenta/amber/violet) mirrored through the optical centre
 | `veil` | number | 0.6 | wide horizontal haze band |
 | `center` | [x, y] | [960, 540] | optical axis the ghosts mirror through |
 | `flicker` | number | 0.4 | subtle intensity shimmer |
-| `seed`, `frame`, `blend` (`'screen'`), `style` | | | |
+| `seed`, `frame`, `blend` (`'normal'`, see Blending), `style` | | | |
 
 ```tsx
 // flare riding a light source that drifts across the top of frame
@@ -132,7 +160,7 @@ Hyperspace / warp streaks: 3D points flying at the camera, drawn as radial motio
 | `count` | number | 340 | |
 | `speed` | number | 0.06 | world units / frame |
 | `travel` | number | — | explicit travelled distance; **integrate your own speed ramp** for smooth accelerations (`travel = f*0.02 + easeIn(p)*4`) |
-| `color`, `secondary`, `glow` (0.6), `res` (1), `seed`, `frame` | | | |
+| `color`, `secondary`, `glow` (0.6), `res` (1), `blend`, `seed`, `frame` | | | |
 
 Tips: ramp `intensity` 0 → 1 over the snare roll (beats 24–30) for the suck-in; zoom-through transitions.
 
@@ -153,7 +181,7 @@ Organic film light leak burning in from an edge, drifting/morphing, then fading 
 ```
 
 ### `GodRays`
-Volumetric shafts radiating from a source, slowly drifting, with **dust motes that are lit only inside the beams**. Half-res canvas for the shafts (conic gradients × radial falloff) + full-res dust, screen-blended.
+Volumetric shafts radiating from a source, slowly drifting, with **dust motes that are lit only inside the beams**. Half-res shafts (conic gradients × radial falloff) + full-res dust in one canvas.
 
 | prop | type | default | notes |
 | --- | --- | --- | --- |
@@ -167,6 +195,7 @@ Volumetric shafts radiating from a source, slowly drifting, with **dust motes th
 | `contrast` | number | 2.6 | higher = thinner, more defined shafts |
 | `dust` | number | 1 | dust density (0 = off) |
 | `core` | number | 0.8 | hot glow at the source |
+| `blend`, `seed`, `frame` | | | |
 
 ```tsx
 // behind the logo reveal
@@ -176,7 +205,7 @@ Volumetric shafts radiating from a source, slowly drifting, with **dust motes th
 
 ### `VolumetricBeams`
 A few soft cone beams (stage lights / light through panels) with hot apex and radial falloff.
-Props: `beams: Beam[]` (`{x, y, angle (90 = down), width (16°), length (1400), color, intensity, sweep (° amplitude)}`), `intensity`, `frame`, `seed`.
+Props: `beams: Beam[]` (`{x, y, angle (90 = down), width (16°), length (1400), color, intensity, sweep (° amplitude)}`), `intensity`, `blend`, `frame`, `seed`. One canvas; cones drawn at half-res.
 
 ```tsx
 <VolumetricBeams beams={[{x: 500, y: -80, angle: 72, width: 9, sweep: 6}, {x: 1400, y: -80, angle: 110, width: 11, color: 'cyan', sweep: 8}]} />
@@ -220,14 +249,14 @@ Digital glitch: horizontal slice displacement (noise computed in a 2-px column, 
 | `blocks` | boolean | true | block-noise overlay (`GlitchBlocks`, also exported) |
 | `seed`, `frame`, `style` | | | |
 
-Tips: s01 "Why did it say that?" glitch; glitch cuts (amount 1 for 4–8 frames around the cut).
+Tips: s01 "Why did it say that?" glitch; glitch cuts (amount 1 for 4–8 frames around the cut). `Glitch` already includes an RGB split — **don't nest it inside `ChromaticAberration`**. For a glitch on one element pass `style={{left, top, width, height}}` (wrapper sized to the element, children positioned inside it) — the filter cost scales with the wrapper area.
 
 ---
 
 ## 3. Energy
 
 ### `Shockwave`
-Expanding ring(s): white-hot leading edge, cyan outer fringe, magenta hint, soft violet trailing glow; circumference brightness varies with a rotating noise mask so it is never a perfect CG circle.
+Expanding ring(s): white-hot leading edge, cyan outer fringe, magenta hint, soft violet trailing glow; circumference brightness varies with a rotating noise mask so it is never a perfect CG circle. One canvas (+ a DOM backdrop-filter band only with `refract`).
 
 | prop | type | default | notes |
 | --- | --- | --- | --- |
@@ -240,7 +269,7 @@ Expanding ring(s): white-hot leading edge, cyan outer fringe, magenta hint, soft
 | `distort` | boolean | false | cheap refraction look: chromatic double edge + dark band |
 | `refract` | boolean | false | real backdrop-filter refraction band — **expensive**, hero only |
 | `core` | boolean | true | flash core at origin |
-| `color`, `secondary`, `intensity`, `frame` | | | |
+| `color`, `secondary`, `intensity`, `blend` (`'normal'` — required for the dark band of `distort`), `frame` | | | |
 
 ```tsx
 <Shockwave x={960} y={540} at={D} rings={3} distort />
@@ -249,7 +278,7 @@ Expanding ring(s): white-hot leading edge, cyan outer fringe, magenta hint, soft
 
 ### `EnergyBurst`
 Canvas particle explosion: drag-decelerated sparks as motion-blurred streaks with glowing heads (white/cyan/violet).
-Props: `x, y, at` · `dur` (55) · `count` (160) · `distance` (720) · `spread` (360) / `direction` (0) · `gravity` (0; ~0.15 for falling sparks) · `color`/`secondary` · `size` (1) · `intensity` · `squash` (1) · `seed` · `frame`.
+Props: `x, y, at` · `dur` (55) · `count` (160) · `distance` (720) · `spread` (360) / `direction` (0) · `gravity` (0; ~0.15 for falling sparks) · `color`/`secondary` · `size` (1) · `intensity` · `squash` (1) · `blend` · `seed` · `frame`.
 
 Tips: "button → energy burst" (s04): `spread={140} direction={-90} distance={420}` from the button.
 
@@ -272,7 +301,7 @@ Each particle has a depth `z`; size/speed/parallax scale with depth, and particl
 | `camX`, `camY` | number | 0 | camera parallax offset in px — pass your camera move so near motes slide more |
 | `boost` | number | 0 | extra brightness (feed `kick(f + from)`) |
 | `area` | {x,y,w,h} | full frame | |
-| `res`, `seed`, `frame`, `style` | | | |
+| `res`, `blend`, `seed`, `frame`, `style` | | | |
 
 ```tsx
 <DustField camX={-cam.x * 0.5} boost={kick(f + from) * 0.6} />
@@ -327,7 +356,7 @@ Multiply scanlines + optional rolling bright band. Props: `opacity` (0.18), `spa
 
 ### `DataRain`
 Falling monospace glyph streams (DejaVu Sans Mono): white-hot heads with glow, cyan → lilac trails, 3 depth layers, glyphs flicker.
-Props: `fontSize` (22) · `density` (0.55) · `speed` · `color`/`accent` · `glyphs` · `layers` (3) · `intensity` · `fade` (true) · `area` · `seed` · `frame` · `style`.
+Props: `fontSize` (22) · `density` (0.55) · `speed` · `color`/`accent` · `glyphs` · `layers` (3) · `intensity` · `fade` (true) · `area` · `blend` · `seed` · `frame` · `style`.
 
 ---
 
@@ -381,7 +410,7 @@ export const GRADE = {
 `GradeLayer` (`{frame, grain, grainSize, vignette, fringe, letterbox}`) is the same layer with explicit values.
 
 ### `FilmGrain`
-Standalone animated grain (overlay blend; protects blacks). Props: `amount` (0.08; 0.05–0.1 tasteful), `size` (1.5 px), `blend` (`'overlay' | 'soft-light'`), `frame`. Prefer `GlobalGrade`; use this for extra grit on a specific shot.
+Standalone animated grain. Props: `amount` (0.08; 0.05–0.1 tasteful), `size` (1.5 px), `blend` (`'normal'` default: static grain field re-positioned per frame, ~20 ms | `'overlay'` / `'soft-light'`: per-frame blended canvas that fully protects blacks, ~50 ms), `frame`. Prefer `GlobalGrade`; use this for extra grit on a specific shot.
 
 ### `Vignette`
 Props: `amount` (0.45), `inner` (0.55), `color` (#04020A), `cx`, `cy` (%).
@@ -407,7 +436,7 @@ Props: `at` · `dur` (16) · `color` (`'white' | 'cyan' | 'violet' | 'pistachio'
 `W, H, CX, CY` · `VC` palette · `hash(n)`, `hash2(a,b)`, `prng(seed)` (mulberry32) · `noise1`, `noise2`, `fbm1` (value noise) ·
 envelopes `impulse(f, at, attack, tau)`, `windowEnv(f, start, dur, in, out)`, `lin(f, start, dur)` · easings `easeOutExpo`, `easeInExpo`, `easeOutCubic`, `easeInOutCubic`, `easeOutQuint` ·
 colour `rgba(hex, a)`, `mixHex`, `hexToRgb`, `colorOf` · hooks `useF(frame?)`, `useSafeId()`, `useCanvasDraw(draw)` ·
-canvas `glowSprite`, `bokehSprite`, `starSprite`, `scratchCanvas`, `radialFill` · `full` (absolute full-frame style).
+canvas `glowSprite`, `bokehSprite`, `starSprite`, `scratchCanvas`, `radialFill` · `full` (absolute full-frame style) · type `CanvasBlend`.
 
 ---
 

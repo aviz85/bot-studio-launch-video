@@ -1,6 +1,6 @@
 /* Deterministic Canvas2D particle fields with depth-of-field bokeh: dust, bokeh, sparkles, embers. */
 import React from 'react';
-import {VC, W, H, bokehSprite, clamp01, colorOf, full, glowSprite, mix, prng, starSprite, useCanvasDraw, useF} from './util';
+import {VC, W, H, bokehSprite, clamp01, colorOf, full, glowSprite, mix, prng, starSprite, useCanvasDraw, useF, type CanvasBlend} from './util';
 
 export type ParticleKind = 'dust' | 'bokeh' | 'sparkle' | 'ember';
 
@@ -29,6 +29,8 @@ export type ParticleFieldProps = {
   area?: {x: number; y: number; w: number; h: number};
   /** Canvas resolution multiplier. */
   res?: number;
+  /** Layer compositing (see CanvasBlend). */
+  blend?: CanvasBlend;
   seed?: number;
   frame?: number;
   style?: React.CSSProperties;
@@ -43,7 +45,7 @@ const DEFAULT_COLORS: Record<ParticleKind, string[]> = {
 
 /** Deterministic particle field. Use the presets DustField / Bokeh / Sparkles / Embers for sane defaults. */
 export const ParticleField: React.FC<ParticleFieldProps> = ({
-  kind = 'dust', count, colors, focus, aperture = 1, speed = 1, direction, size = 1, opacity = 1, camX = 0, camY = 0, boost = 0, area, res = 1, seed = 21, frame, style,
+  kind = 'dust', count, colors, focus, aperture = 1, speed = 1, direction, size = 1, opacity = 1, camX = 0, camY = 0, boost = 0, area, res = 1, blend = 'normal', seed = 21, frame, style,
 }) => {
   const f = useF(frame);
   const pal = (colors ?? DEFAULT_COLORS[kind]).map((c) => colorOf(c, '#ffffff'));
@@ -106,7 +108,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({
       }
     }
   });
-  return <canvas ref={ref} width={Math.round(W * res)} height={Math.round(H * res)} style={{...full, mixBlendMode: 'screen', ...style}} />;
+  return <canvas ref={ref} width={Math.round(W * res)} height={Math.round(H * res)} style={{...full, mixBlendMode: blend, ...style}} />;
 };
 /** Alias of ParticleField (name used in the style brief). */
 export const Particles = ParticleField;

@@ -117,7 +117,7 @@ const V4: React.FC = () => (
 );
 const V5: React.FC = () => {
   const f = useCurrentFrame();
-  const ca = 16 * impulse(f, 6, 1, 8) + 3;
+  const ca = 16 * impulse(f, 6, 1, 8); // decays below 0.25 px → CA bypasses itself before the glitch starts (never nest both at full strength)
   const gl = f > 26 && f < 56 ? 0.25 + 0.75 * impulse(f, 30, 1, 10) : 0;
   return (
     <AbsoluteFill>

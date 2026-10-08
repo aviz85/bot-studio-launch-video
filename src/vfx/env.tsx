@@ -1,7 +1,7 @@
 /* Environments: deep space backdrop, holographic grid floor, grid tunnel, scanlines, data rain. */
 import React from 'react';
 import {band, kick} from '../lib';
-import {CX, CY, H, VC, W, clamp01, colorOf, full, glowSprite, hash2, mix, mixHex, noise2, prng, radialFill, rgba, scratchCanvas, starSprite, useCanvasDraw, useF} from './util';
+import {CX, CY, H, VC, W, clamp01, colorOf, full, glowSprite, hash2, mix, mixHex, noise2, prng, radialFill, rgba, scratchCanvas, starSprite, useCanvasDraw, useF, type CanvasBlend} from './util';
 
 /* ======================================================================
  * Nebula texture (generated once per page, cached; domain-warped fbm)
@@ -547,6 +547,8 @@ export type DataRainProps = {
   /** Fade top/bottom edges. */
   fade?: boolean;
   area?: {x: number; y: number; w: number; h: number};
+  /** Layer compositing (see CanvasBlend). */
+  blend?: CanvasBlend;
   seed?: number;
   frame?: number;
   style?: React.CSSProperties;
@@ -555,7 +557,7 @@ export type DataRainProps = {
 const DEFAULT_GLYPHS = '01{}[]<>/=+*#$&|:;ABCDEF0123456789ƒλΣΔ∑≡→⟨⟩';
 
 /** Falling monospace glyph streams with bright cyan heads and lilac trails, in up to 3 depth layers. */
-export const DataRain: React.FC<DataRainProps> = ({fontSize = 22, density = 0.55, speed = 1, color, accent, glyphs = DEFAULT_GLYPHS, layers = 3, intensity = 1, fade = true, area, seed = 31, frame, style}) => {
+export const DataRain: React.FC<DataRainProps> = ({fontSize = 22, density = 0.55, speed = 1, color, accent, glyphs = DEFAULT_GLYPHS, layers = 3, intensity = 1, fade = true, area, blend = 'normal', seed = 31, frame, style}) => {
   const f = useF(frame);
   const col = colorOf(color, VC.lilac);
   const acc = colorOf(accent, VC.cyan);
@@ -606,5 +608,5 @@ export const DataRain: React.FC<DataRainProps> = ({fontSize = 22, density = 0.55
       }
     }
   });
-  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: 'screen', ...style}} />;
+  return <canvas ref={ref} width={W} height={H} style={{...full, mixBlendMode: blend, ...style}} />;
 };
