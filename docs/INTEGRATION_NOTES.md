@@ -24,3 +24,10 @@
 - Avatar: s03's hero avatar (`src/scenes/s03/art.tsx`) uses the real logo's "<" chevron wink; the kit `Avatar` uses a flat-line wink. Unify (s10 has been told to match s03).
 - s03 covers the whip SFX at 1075 (s04 dropped its own).
 - Heaviest frames: drop 864–870 (~2.4× the lockup), zoom-through at 966, whip-out at 1072.
+
+## s01
+- Glitch / ChromaticAberration (vfx) add ~1.3 s/frame each when wrapped around a 3D scene (VFX.md understates this). s01 fires Glitch only in bursts.
+- glitchCut costs ~5× and zoomThrough ~7× over large text planes in s01, which uses its own cheaper replacements.
+- SpaceBackdrop camX/camY: the nebula texture has only ~±115 px of margin, so large offsets expose a hard edge. s01 clamps to ±420; consider clamping inside the component.
+- Chromium renders 3D layers at full native size however small they appear; render far objects at half or quarter resolution.
+- s01 ends collapsing to near-black (old-TV off) at 430; s02 opens from darkness.

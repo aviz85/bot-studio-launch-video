@@ -267,8 +267,9 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   // B2 — long-lens dutch side track
   const B2 = (lt: number) => {
     const keys: CamKey[] = [
-      {at: -8, target: [560, FY - 250, 0], yaw: -13, pitch: 3.5, dist: 2500, roll: -8, focal: 55, shiftY: 310},
-      {at: 60, ease: 'linear', target: [-380, FY - 250, 0], yaw: -9, pitch: 4.5, dist: 2380, roll: -9, shiftY: 260},
+      {at: -8, target: [560, FY - 250, 0], yaw: -13, pitch: 3.5, dist: 2500, roll: -8, focal: 55, shiftY: 400},
+      {at: 22, ease: 'linear', target: [210, FY - 250, 0], yaw: -11.5, pitch: 3.9, dist: 2455, roll: -8.4, shiftY: 330},
+      {at: 60, ease: 'linear', target: [-380, FY - 250, 0], yaw: -9, pitch: 4.5, dist: 2380, roll: -9, shiftY: 280},
     ];
     const at = (x: number) => addCam(camPath(x, keys), ...life(x, 0.6, 3, 18));
     const cam = at(lt);
@@ -529,7 +530,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       {/* PART B copy 2 */}
       {t >= L(113.85) && (
         <>
-          <Scrim x={560} y={880} w={1300} h={300} o={0.5 * (1 - lin01(t, L(119.5), 14))} />
+          <Scrim x={560} y={880} w={1300} h={300} o={0.5 * lin01(t, L(114) + 5, 10) * (1 - lin01(t, L(119.5), 14))} />
           <Copy t={t} x={124} y={798} kicker={{text: 'Decisions · Clerk · Timeline', at: L(113.85), color: '#E7F4B9'}}
             lines={[{text: 'Every decision, explained.', at: L(114), size: 86, stagger: 6, dur: 24, tone: 'lilac'}]}
             out={{at: L(119.5), mode: 'blur', dur: 12}} />
