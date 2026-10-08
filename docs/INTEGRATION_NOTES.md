@@ -44,3 +44,10 @@
 - zoomThrough in-half: s05 uses blur:0 (zoom blur cost ~2.7×); the 0.9→1 scale-in exposes the shot's edge, so s05 extends its backdrop past the frame.
 - The VFX Reticle is too faint on moving targets; s05 has a local LockReticle.
 - s05 ends with a flash out at 1719 into s06's in-only flash.
+
+## s06
+- **Duplicate SFX:** both s06 and s07 cue a `whip` at 2149. Remove the one in s06 (s07 owns the boundary whip, per its report).
+- Visual boundaries: s06's first frame matches s05's flash out-half (dur 14, split 0.5, peak 0.9, #E6FBFF); its exit whip (right, dur 10) matches s07's opening whip.
+- Chromium quirk: an off-screen `Obj` plane that is huge in projection corrupted the 3D sort and hard-clipped a different visible pane. s06 culls off-frame monoliths; other scenes may hit the same thing.
+- `zoomThrough` shows black frame edges for ~6 frames after the cut (incoming shot settles 0.9→1 scale); the stock version cost 4–9 s/frame here, so s06 rebuilt its beat-72 transition.
+- Heaviest frames: Clerk slam (1834), core ignition (1895), whip overlap (1776).
