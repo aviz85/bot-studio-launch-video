@@ -36,7 +36,7 @@ import {
 } from '../cine';
 import {SpaceBackdrop, DustField, GodRays, LensFlare, HUDFrame, Glitch, Bokeh, Swoosh, Scanlines, Flash, VolumetricBeams} from '../vfx';
 import {B, band, clamp, rms} from '../lib';
-import {MONO_BOTTOM, MONO_G, MacroLines, Monolith, UI_T, WIDGET_H, WIDGET_W, Widget, easeInCubic, easeOutCubic, easeOutExpo, h01, lerp, macroPos, smooth01} from './s01/set';
+import {MONO_BOTTOM, MONO_G, MacroLines, Monolith, WIDGET_H, WIDGET_W, Widget, easeInCubic, easeOutCubic, easeOutExpo, h01, lerp, smooth01} from './s01/set';
 import {GRAD_SOFT, GlitchType, RevealLine} from './s01/type';
 
 const SPACE = '#04020A';

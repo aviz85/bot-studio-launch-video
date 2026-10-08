@@ -267,8 +267,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   // B2 — long-lens dutch side track
   const B2 = (lt: number) => {
     const keys: CamKey[] = [
-      {at: -8, target: [560, FY - 250, 0], yaw: -13, pitch: 3.5, dist: 2500, roll: -8, focal: 55, shiftY: 240},
-      {at: 60, ease: 'linear', target: [-380, FY - 250, 0], yaw: -9, pitch: 4.5, dist: 2380, roll: -9},
+      {at: -8, target: [560, FY - 250, 0], yaw: -13, pitch: 3.5, dist: 2500, roll: -8, focal: 55, shiftY: 310},
+      {at: 60, ease: 'linear', target: [-380, FY - 250, 0], yaw: -9, pitch: 4.5, dist: 2380, roll: -9, shiftY: 260},
     ];
     const at = (x: number) => addCam(camPath(x, keys), ...life(x, 0.6, 3, 18));
     const cam = at(lt);
@@ -414,7 +414,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <World camera={cam} focus={fd} aperture={9} maxBlur={12} backdrop={<SpaceBG cam={cam} from={from} floorY={700} grid={0.3} />}>
           <UITheme look="frost">
-            <DashRig t={lt + L(114)} f={f} E={E} times={TIMES} crisp={{decisions: 2, clerk: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'title']} />
+            <DashRig t={lt + L(114)} f={f} E={E} times={TIMES} crisp={{decisions: 2, clerk: 2}} skip={['side', 'top', 'base', 'mainPane', 'timeline', 'title', 'chat']} />
           </UITheme>
         </World>
         <Glint x={pg.x} y={pg.y} size={260} intensity={1.8 * impulse(t, TIMES.decisions[0], 1, 10)} color="pistachio" />
