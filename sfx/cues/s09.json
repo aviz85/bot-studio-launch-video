@@ -1,0 +1,765 @@
+{
+ "scene": "s09",
+ "cues": [
+  {
+   "frame": 3224,
+   "sfx": "whoosh",
+   "gain_db": -12,
+   "pan": 0,
+   "params": {
+    "dur": 0.6,
+    "pitch": 1.2,
+    "direction": "none",
+    "peak": 0.2,
+    "seed": 11
+   },
+   "note": "emerge from s08 zoom-through (s08 owns the swoosh_rev into 3224)"
+  },
+  {
+   "frame": 3231,
+   "sfx": "pop",
+   "gain_db": -13,
+   "pan": 0.3,
+   "params": {
+    "pitch": 1.0,
+    "seed": 1
+   },
+   "note": "user bubble \"Can I book for Thursday?\" slams in"
+  },
+  {
+   "frame": 3251,
+   "sfx": "pop",
+   "gain_db": -12,
+   "pan": 0.1,
+   "params": {
+    "pitch": 1.38,
+    "seed": 2
+   },
+   "note": "instant heart reaction"
+  },
+  {
+   "frame": 3251,
+   "sfx": "sparkle",
+   "gain_db": -13,
+   "pan": 0.1,
+   "params": {
+    "direction": "none",
+    "count": 6,
+    "seed": 1
+   },
+   "note": "reaction burst sparkles"
+  },
+  {
+   "frame": 3257,
+   "sfx": "blip",
+   "gain_db": -16,
+   "pan": 0.25,
+   "params": {
+    "note": "Eb6",
+    "kind": "glass"
+   },
+   "note": "chip: Instant reaction"
+  },
+  {
+   "frame": 3264,
+   "sfx": "whip",
+   "gain_db": -10,
+   "pan": 0,
+   "params": {
+    "direction": "lr",
+    "seed": 12
+   },
+   "note": "whip cut to S2 (image moves right)"
+  },
+  {
+   "frame": 3278,
+   "sfx": "pop",
+   "gain_db": -13,
+   "pan": -0.3,
+   "params": {
+    "pitch": 1.12,
+    "seed": 3
+   },
+   "note": "bot bubble \"Absolutely!\""
+  },
+  {
+   "frame": 3284,
+   "sfx": "shimmer",
+   "gain_db": -18,
+   "pan": -0.4,
+   "params": {
+    "dur": 0.8,
+    "brightness": 0.6,
+    "sweep": 0.7,
+    "seed": 1
+   },
+   "note": "copy \"Talks naturally.\" sheen"
+  },
+  {
+   "frame": 3304,
+   "sfx": "pop",
+   "gain_db": -13,
+   "pan": -0.25,
+   "params": {
+    "pitch": 1.18,
+    "seed": 4
+   },
+   "note": "bot bubble \"Checking Thursday slots now...\""
+  },
+  {
+   "frame": 3311,
+   "sfx": "blip",
+   "gain_db": -16,
+   "pan": 0.4,
+   "params": {
+    "note": "F6",
+    "kind": "glass"
+   },
+   "note": "chip: Paced message groups"
+  },
+  {
+   "frame": 3311,
+   "sfx": "data_chatter",
+   "gain_db": -17,
+   "pan": 0.35,
+   "params": {
+    "dur": 0.7,
+    "density": 24,
+    "spread": 0.4,
+    "seed": 1
+   },
+   "note": "background lane: create_booking async"
+  },
+  {
+   "frame": 3318,
+   "sfx": "whoosh",
+   "gain_db": -14,
+   "pan": 0,
+   "params": {
+    "dur": 0.7,
+    "pitch": 0.8,
+    "brightness": 0.4,
+    "direction": "none",
+    "peak": 0.5,
+    "seed": 2
+   },
+   "note": "soft flash cut + crane down to the lane"
+  },
+  {
+   "frame": 3331,
+   "sfx": "scan",
+   "gain_db": -15,
+   "pan": 0.3,
+   "params": {
+    "dur": 0.65,
+    "direction": "lr",
+    "sweep": "up",
+    "buzz": 0.4,
+    "lock": false,
+    "seed": 1
+   },
+   "note": "slots scanning in the lane"
+  },
+  {
+   "frame": 3338,
+   "sfx": "blip",
+   "gain_db": -16,
+   "pan": 0.35,
+   "params": {
+    "note": "Ab6",
+    "kind": "glass"
+   },
+   "note": "chip: Booking ran in the background"
+  },
+  {
+   "frame": 3352,
+   "sfx": "glass_tick",
+   "gain_db": -14,
+   "pan": 0.45,
+   "params": {
+    "pitch": 1.26,
+    "seed": 1
+   },
+   "note": "3:00 PM slot booked"
+  },
+  {
+   "frame": 3353,
+   "sfx": "zap",
+   "gain_db": -15,
+   "pan": 0.2,
+   "params": {
+    "dur": 0.3,
+    "direction": "rl",
+    "seed": 1
+   },
+   "note": "result beam lane -> chat"
+  },
+  {
+   "frame": 3358,
+   "sfx": "impact",
+   "gain_db": -14,
+   "pan": 0,
+   "params": {
+    "punch": 0.9,
+    "brightness": 0.6,
+    "tail": 0.6,
+    "sub": 0.6,
+    "seed": 2
+   },
+   "note": "flash cut: confirmation macro"
+  },
+  {
+   "frame": 3358,
+   "sfx": "shimmer",
+   "gain_db": -17,
+   "pan": 0,
+   "params": {
+    "dur": 0.8,
+    "brightness": 0.7,
+    "seed": 2
+   },
+   "note": "flare on the confirmation"
+  },
+  {
+   "frame": 3365,
+   "sfx": "confirm",
+   "gain_db": -14,
+   "pan": -0.1,
+   "params": {
+    "notes": [
+     "C6",
+     "F6"
+    ],
+    "seed": 1
+   },
+   "note": "\"Thursday, 3:00 PM is yours.\""
+  },
+  {
+   "frame": 3372,
+   "sfx": "stamp",
+   "gain_db": -10,
+   "pan": -0.15,
+   "params": {
+    "weight": 0.35,
+    "clack": 1.1,
+    "ring": 0.4,
+    "seed": 1
+   },
+   "note": "Booking confirmed pill lands"
+  },
+  {
+   "frame": 3385,
+   "sfx": "whip",
+   "gain_db": -10,
+   "pan": 0,
+   "params": {
+    "direction": "none",
+    "seed": 13
+   },
+   "note": "whip-up cut to S5"
+  },
+  {
+   "frame": 3392,
+   "sfx": "pop",
+   "gain_db": -13,
+   "pan": 0.2,
+   "params": {
+    "pitch": 1.0,
+    "seed": 5
+   },
+   "note": "user bubble \"Amazing\""
+  },
+  {
+   "frame": 3396,
+   "sfx": "whoosh",
+   "gain_db": -15,
+   "pan": 0,
+   "params": {
+    "dur": 1.2,
+    "pitch": 0.7,
+    "brightness": 0.35,
+    "direction": "none",
+    "peak": 0.3,
+    "seed": 3
+   },
+   "note": "speed-ramped pull-back"
+  },
+  {
+   "frame": 3399,
+   "sfx": "pop",
+   "gain_db": -13,
+   "pan": 0.15,
+   "params": {
+    "pitch": 1.42,
+    "seed": 6
+   },
+   "note": "raised-hands reaction"
+  },
+  {
+   "frame": 3399,
+   "sfx": "sparkle",
+   "gain_db": -15,
+   "pan": 0.15,
+   "params": {
+    "direction": "lr",
+    "count": 5,
+    "seed": 2
+   },
+   "note": "reaction sparkle"
+  },
+  {
+   "frame": 3405,
+   "sfx": "blip",
+   "gain_db": -16,
+   "pan": -0.35,
+   "params": {
+    "note": "C7",
+    "kind": "glass"
+   },
+   "note": "chip: Files, voice, GIFs"
+  },
+  {
+   "frame": 3439,
+   "sfx": "swoosh_rev",
+   "gain_db": -11,
+   "pan": 0,
+   "params": {
+    "dur": 0.6,
+    "seed": 1
+   },
+   "note": "zoom-through into the timeline (ends on the cut)"
+  },
+  {
+   "frame": 3439,
+   "sfx": "whoosh",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "dur": 0.6,
+    "pitch": 1.2,
+    "direction": "none",
+    "peak": 0.2,
+    "seed": 4
+   },
+   "note": "emerge from the zoom-through"
+  },
+  {
+   "frame": 3441,
+   "sfx": "blip",
+   "gain_db": -14,
+   "pan": -0.2,
+   "params": {
+    "note": "C6",
+    "kind": "glass"
+   },
+   "note": "timeline marker 0 \"Message sent 0 ms\""
+  },
+  {
+   "frame": 3442,
+   "sfx": "hum_holo",
+   "gain_db": -22,
+   "pan": 0,
+   "params": {
+    "beats": 4,
+    "movement": 0.6,
+    "seed": 1
+   },
+   "note": "holo bed under the timeline"
+  },
+  {
+   "frame": 3446,
+   "sfx": "counter_roll",
+   "gain_db": -18,
+   "pan": 0,
+   "params": {
+    "dur": 1.35,
+    "rate": 28,
+    "decel": 0.4,
+    "land": false,
+    "seed": 1
+   },
+   "note": "ms counter rolling 0 -> 1,240"
+  },
+  {
+   "frame": 3452,
+   "sfx": "blip",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "note": "Eb6",
+    "kind": "glass"
+   },
+   "note": "timeline marker 1 pops"
+  },
+  {
+   "frame": 3466,
+   "sfx": "blip",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "note": "F6",
+    "kind": "glass"
+   },
+   "note": "timeline marker 2 pops"
+  },
+  {
+   "frame": 3479,
+   "sfx": "blip",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "note": "Ab6",
+    "kind": "glass"
+   },
+   "note": "timeline marker 3 pops"
+  },
+  {
+   "frame": 3482,
+   "sfx": "sparkle",
+   "gain_db": -15,
+   "pan": 0,
+   "params": {
+    "direction": "lr",
+    "count": 6,
+    "seed": 3
+   },
+   "note": "copy \"Every millisecond, traced.\""
+  },
+  {
+   "frame": 3493,
+   "sfx": "blip",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "note": "Bb6",
+    "kind": "glass"
+   },
+   "note": "timeline marker 4 pops"
+  },
+  {
+   "frame": 3493,
+   "sfx": "whip",
+   "gain_db": -10,
+   "pan": 0,
+   "params": {
+    "direction": "rl",
+    "seed": 14
+   },
+   "note": "whip cut to S7 (image moves left)"
+  },
+  {
+   "frame": 3506,
+   "sfx": "blip",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "note": "C7",
+    "kind": "glass"
+   },
+   "note": "timeline marker 5 pops"
+  },
+  {
+   "frame": 3519,
+   "sfx": "shockwave",
+   "gain_db": -11,
+   "pan": 0.3,
+   "params": {
+    "dur": 1.0,
+    "brightness": 0.6,
+    "seed": 1
+   },
+   "note": "Last token 1,240 ms lands"
+  },
+  {
+   "frame": 3519,
+   "sfx": "hit_metal",
+   "gain_db": -13,
+   "pan": 0.3,
+   "params": {
+    "material": "glass",
+    "pitch": 1.2,
+    "weight": 0.2,
+    "tail": 0.8,
+    "seed": 1
+   },
+   "note": "Last token glass ping"
+  },
+  {
+   "frame": 3533,
+   "sfx": "whoosh",
+   "gain_db": -14,
+   "pan": 0,
+   "params": {
+    "dur": 0.9,
+    "pitch": 0.75,
+    "brightness": 0.4,
+    "direction": "lr",
+    "peak": 0.4,
+    "seed": 5
+   },
+   "note": "pull back to the whole trace"
+  },
+  {
+   "frame": 3546,
+   "sfx": "glitch",
+   "gain_db": -11,
+   "pan": 0,
+   "params": {
+    "dur": 0.22,
+    "intensity": 0.75,
+    "seed": 7
+   },
+   "note": "glitch cut into BotScript"
+  },
+  {
+   "frame": 3548,
+   "sfx": "tick",
+   "gain_db": -17,
+   "pan": 0.1,
+   "params": {},
+   "note": "glitch tail tick"
+  },
+  {
+   "frame": 3549,
+   "sfx": "hum_holo",
+   "gain_db": -21,
+   "pan": 0,
+   "params": {
+    "beats": 8,
+    "movement": 0.5,
+    "brightness": 0.6,
+    "seed": 2
+   },
+   "note": "holo bed under the code"
+  },
+  {
+   "frame": 3553,
+   "sfx": "type_keys",
+   "gain_db": -14,
+   "pan": 0.1,
+   "params": {
+    "n_keys": 26,
+    "rate": 17,
+    "softness": 0.3,
+    "spread": 0.3,
+    "seed": 1
+   },
+   "note": "code streaming in (lines 1-22)"
+  },
+  {
+   "frame": 3553,
+   "sfx": "data_chatter",
+   "gain_db": -18,
+   "pan": 0.2,
+   "params": {
+    "dur": 1.6,
+    "density": 30,
+    "spread": 0.6,
+    "seed": 2
+   },
+   "note": "code stream data texture"
+  },
+  {
+   "frame": 3600,
+   "sfx": "whoosh",
+   "gain_db": -13,
+   "pan": 0,
+   "params": {
+    "dur": 0.45,
+    "pitch": 1.2,
+    "direction": "none",
+    "peak": 0.5,
+    "seed": 6
+   },
+   "note": "quick flash cut to the macro"
+  },
+  {
+   "frame": 3654,
+   "sfx": "swoosh_rev",
+   "gain_db": -12,
+   "pan": 0,
+   "params": {
+    "dur": 0.5,
+    "seed": 2
+   },
+   "note": "stamp flies in (ends on impact)"
+  },
+  {
+   "frame": 3654,
+   "sfx": "impact",
+   "gain_db": -6,
+   "pan": 0.2,
+   "params": {
+    "punch": 1.2,
+    "brightness": 0.6,
+    "tail": 0.9,
+    "seed": 3
+   },
+   "note": "\"Valid\" stamp slams"
+  },
+  {
+   "frame": 3654,
+   "sfx": "flare_sting",
+   "gain_db": -12,
+   "pan": 0.2,
+   "params": {
+    "pre": 0.12,
+    "seed": 4
+   },
+   "note": "stamp flare + shockwave"
+  },
+  {
+   "frame": 3667,
+   "sfx": "hit_metal",
+   "gain_db": -14,
+   "pan": 0.2,
+   "params": {
+    "material": "glass",
+    "pitch": 1.35,
+    "weight": 0.15,
+    "tail": 0.7,
+    "seed": 2
+   },
+   "note": "glass ping after the stamp"
+  },
+  {
+   "frame": 3667,
+   "sfx": "shimmer",
+   "gain_db": -17,
+   "pan": 0,
+   "params": {
+    "dur": 0.6,
+    "brightness": 0.7,
+    "sweep": 0.8,
+    "seed": 3
+   },
+   "note": "sheen across the code slab"
+  },
+  {
+   "frame": 3681,
+   "sfx": "whip",
+   "gain_db": -10,
+   "pan": 0,
+   "params": {
+    "direction": "lr",
+    "seed": 15
+   },
+   "note": "whip cut to S11 (image moves right)"
+  },
+  {
+   "frame": 3685,
+   "sfx": "sparkle",
+   "gain_db": -15,
+   "pan": 0.3,
+   "params": {
+    "direction": "lr",
+    "count": 5,
+    "seed": 4
+   },
+   "note": "copy \"One script.\""
+  },
+  {
+   "frame": 3685,
+   "sfx": "zap",
+   "gain_db": -17,
+   "pan": 0.15,
+   "params": {
+    "dur": 0.3,
+    "direction": "lr",
+    "seed": 10
+   },
+   "note": "beam 0 fires from the code line"
+  },
+  {
+   "frame": 3694,
+   "sfx": "blip",
+   "gain_db": -14,
+   "pan": 0.35,
+   "params": {
+    "note": "C6",
+    "kind": "glass"
+   },
+   "note": "UI piece 0 materializes"
+  },
+  {
+   "frame": 3698,
+   "sfx": "zap",
+   "gain_db": -19,
+   "pan": 0.15,
+   "params": {
+    "dur": 0.3,
+    "direction": "lr",
+    "seed": 11
+   },
+   "note": "beam 1 fires from the code line"
+  },
+  {
+   "frame": 3707,
+   "sfx": "blip",
+   "gain_db": -14,
+   "pan": 0.3,
+   "params": {
+    "note": "Eb6",
+    "kind": "fm"
+   },
+   "note": "UI piece 1 materializes"
+  },
+  {
+   "frame": 3712,
+   "sfx": "zap",
+   "gain_db": -17,
+   "pan": 0.15,
+   "params": {
+    "dur": 0.3,
+    "direction": "lr",
+    "seed": 12
+   },
+   "note": "beam 2 fires from the code line"
+  },
+  {
+   "frame": 3721,
+   "sfx": "blip",
+   "gain_db": -14,
+   "pan": 0.5,
+   "params": {
+    "note": "F6",
+    "kind": "glass"
+   },
+   "note": "UI piece 2 materializes"
+  },
+  {
+   "frame": 3725,
+   "sfx": "zap",
+   "gain_db": -17,
+   "pan": 0.15,
+   "params": {
+    "dur": 0.3,
+    "direction": "lr",
+    "seed": 13
+   },
+   "note": "beam 3 fires from the code line"
+  },
+  {
+   "frame": 3734,
+   "sfx": "blip",
+   "gain_db": -14,
+   "pan": 0.3,
+   "params": {
+    "note": "Ab6",
+    "kind": "fm"
+   },
+   "note": "UI piece 3 materializes"
+  },
+  {
+   "frame": 3761,
+   "sfx": "swoosh_rev",
+   "gain_db": -11,
+   "pan": 0,
+   "params": {
+    "dur": 0.6,
+    "seed": 3
+   },
+   "note": "push-in + flash ramp into s10 (ends on the cut)"
+  }
+ ]
+}
