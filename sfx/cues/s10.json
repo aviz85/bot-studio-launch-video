@@ -54,7 +54,7 @@
     {"frame": 4376, "sfx": "pop", "gain_db": -22, "pan": 0, "params": {"pitch": 1.1, "seed": 3}, "note": "pill Clerk"},
     {"frame": 4381, "sfx": "pop", "gain_db": -22, "pan": 0.18, "params": {"pitch": 1.16, "seed": 4}, "note": "pill BotScript"},
     {"frame": 4386, "sfx": "pop", "gain_db": -22, "pan": 0.35, "params": {"pitch": 1.22, "seed": 5}, "note": "pill Live Dashboard"},
-    {"frame": 4417, "sfx": "blip", "gain_db": -21, "pan": 0.05, "params": {"note": "C7", "kind": "glass", "dur": 0.18}, "note": "164.25 the avatar winks"},
+    {"frame": 4415, "sfx": "blip", "gain_db": -21, "pan": 0.05, "params": {"note": "C7", "kind": "glass", "dur": 0.18}, "note": "164.25 the avatar winks into the brand <"},
     {"frame": 4419, "sfx": "glass_tick", "gain_db": -24, "pan": 0.1, "params": {"pitch": 1.5, "seed": 5}, "note": "wink glint"}
   ]
 }

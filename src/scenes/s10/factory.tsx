@@ -198,6 +198,8 @@ export type FactoryOpts = {
   showSpark?: boolean;
   /** extra lift of every card's lock flash (e.g. on a wall-wide pulse) */
   pulse?: number;
+  /** cheaper card LOD while a transition overlaps two worlds (detail is smeared by the whip blur anyway) */
+  lite?: boolean;
 };
 
 const sweepAt = (t: number, x: number, sweeps: [number, number][]) => {
@@ -270,7 +272,8 @@ export const FactorySet: React.FC<{t: number; cam: ResolvedCam; opts?: FactoryOp
     if (proj.x < -900 || proj.x > 2820 || proj.y < -700 || proj.y > 1780) continue;
     const sheen = sweepAt(t, st.x, sweeps);
     const flash = Math.max(st.flash, (o.pulse ?? 0) * 0.6);
-    const lod = s.named >= 0 && scr > 0.42 ? -1 : scr > 0.5 ? 0 : scr > 0.13 ? 1 : 2;
+    let lod = s.named >= 0 && scr > 0.42 ? -1 : scr > 0.5 ? 0 : scr > 0.13 ? 1 : 2;
+    if (o.lite) lod = Math.max(lod, scr > 0.3 ? 1 : 2);
     items.push(
       <Obj key={s.i} x={st.x} y={st.y} z={st.z} ry={st.ry} rz={st.rz} s={st.sc} o={op} nearFade={[60, 420]} dof={s.named >= 0 ? 1 : 0.6}>
         {lod === -1 ? <HeroBot n={s.named} sheen={sheen} flash={flash} look="frost" /> : <GlassBot b={s.b} lod={lod} look={s.named >= 0 ? 'frost' : look} sheen={sheen} flash={flash} />}

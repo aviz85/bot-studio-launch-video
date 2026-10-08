@@ -37,3 +37,10 @@
 - `Beam3D`: crossed 3D ribbons inside a World with other objects clipped the whole World horizontally. s02 uses screen-space SVG beams (`ScreenBeam` in `env.tsx`).
 - `Obj nearFade` measures the object's centre depth, so wide objects fade while still in view.
 - The riser ends at 806 and the `suck_in` ends exactly at 860, so s03 must not add another suck_in. Frame 859 is near-black with the glint at (960, 540), where s03's FlareBurst fires.
+
+## s05
+- SpaceBackdrop parallax margin is only ~6% (hard edges above ~290 px vertical / ~500 px horizontal). s05 clamps it.
+- GlassOrbNode near the camera rasterises its blurred shadows at screen size (~1.5 s/frame). s05 swaps in a gradient-only LiteOrb once the on-screen radius exceeds 230 px. s05 did not see the rectangle artifact with camera-facing orbs.
+- zoomThrough in-half: s05 uses blur:0 (zoom blur cost ~2.7×); the 0.9→1 scale-in exposes the shot's edge, so s05 extends its backdrop past the frame.
+- The VFX Reticle is too faint on moving targets; s05 has a local LockReticle.
+- s05 ends with a flash out at 1719 into s06's in-only flash.

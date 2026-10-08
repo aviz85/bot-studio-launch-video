@@ -144,28 +144,28 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       name: 'A2 grid', from: lb(142), to: lb(144), in: whip({dir: 'right', dur: 10}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const cam = addCam(camPath(lt, A2_KEYS), handheld(lt, 0.6, 3), kickPush(f, 30));
-        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [3600, 8000], sparkle: 170}} glint={0.25} rays={0.25} />;
+        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [3600, 8000], sparkle: 170, lite: !!info.tin && info.tin.d < 2}} glint={0.25} rays={0.25} />;
       },
     },
     {
       name: 'A3 multiply', from: lb(144), to: lb(146), in: flashCut({dur: 8, peak: 0.55}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const at = (x: number) => camPath(A3_RAMP.time(x), A3_KEYS);
         const cam = addCam(at(lt), handheld(lt, 0.6, 4), kickZoom(f, 0.02));
         const st = clamp01((A3_RAMP.speed(lt) - 1) / 2.2) * 0.6;
-        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4500, 12000], sparkle: 170}} streak={[st, -A3_RAMP.time(lt) * 0.05]} glint={0.25} rays={0.2} />;
+        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4500, 12000], sparkle: 170, lite: !!info.tout}} streak={[st, -A3_RAMP.time(lt) * 0.05]} glint={0.25} rays={0.2} />;
       },
     },
     {
       name: 'A4 sweep', from: lb(146), to: lb(148), in: whip({dir: 'up', dur: 10}),
-      render: (lt) => {
+      render: (lt, _p, info) => {
         const at = (x: number) => camPath(x, A4_KEYS);
         const cam = addCam(at(lt), handheld(lt, 0.9, 5), kickPush(f, 26));
         return (
           <>
-            <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4200, 11000], sweeps: [[lb(146) - 16, 300]], sparkle: 170}} rays={0} />
+            <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4200, 11000], sweeps: [[lb(146) - 16, 300]], sparkle: 170, lite: !!info.tin && info.tin.d < 2}} rays={0} />
             <LightStreak start={lb(146) - 4} dur={26} angle={-14} count={6} spread={300} offset={-120} length={1300} color="cyan" secondary="violet" intensity={0.9} frame={t} seed={11} />
           </>
         );

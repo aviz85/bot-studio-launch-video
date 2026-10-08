@@ -33,8 +33,8 @@ import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {SceneProps} from '../cine/types';
 import {B, kick} from '../lib';
 import {
-  World, Obj, CamSpec, CamKey, V3, addCam, handheld, drift, kickPush, kickZoom, camPath, camMotion, project, resolveCam, depthOf,
-  MotionBlur, Shots, Shot, whip, zoomThrough, flashCut, cut, FloorGrid, EASES,
+  World, Obj, CamSpec, CamKey, V3, addCam, handheld, kickPush, kickZoom, camPath, camMotion, project, resolveCam, depthOf,
+  MotionBlur, Shots, Shot, whip, flashCut, cut, FloorGrid, EASES,
 } from '../cine';
 import {SpaceBackdrop, DustField, Bokeh, Shockwave, EnergyBurst, FlareBurst, LensFlare, GodRays, Flash, Glint, Reticle, SpeedLines} from '../vfx';
 import {Monolith, Core, CoreLabel, ROLES, Role, MW, MH, EMBLEM_Y, MINI_Y} from './s06/minds';
@@ -519,7 +519,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
   ];
   // B6 — hero wide, slow push, whip out
   const b6: CamKey[] = [
-    {at: 0, target: [0, -60, 0], yaw: 14, pitch: -18, dist: 3250, roll: 7, focal: 30, shiftX: 60, shiftY: 105},
+    {at: 0, target: [0, -60, 0], yaw: 14, pitch: -18, dist: 3300, roll: 7, focal: 30, shiftX: 60, shiftY: 80},
     {at: L(80) - L(79), yaw: 20, pitch: -15, dist: 3020, roll: 8},
   ];
   const bLife = (lt: number, amp: number, seed: number) => [handheld(lt, amp, seed), kickPush(f, 16), jolt(t, tm.seg1, 0.6), ...tm.critLand.map((a) => jolt(t, a, 0.7)), jolt(t, tm.fill1, 0.5)];

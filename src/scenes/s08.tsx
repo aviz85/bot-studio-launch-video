@@ -100,7 +100,12 @@ const CapFlares: React.FC<{cam: CamSpec; f: number; n?: number; scale?: number; 
 /* Environments                                                         */
 /* ------------------------------------------------------------------ */
 /** Axis-aligned, clamped motion blur (one anisotropic blur; the diagonal rotate/unrotate path cost ~2 s/frame here). */
-const mbAxis = (m: {dx: number; dy: number}, max = 32) => ({sx: Math.min(max, shutterBlur(m.dx)), sy: Math.min(max, shutterBlur(m.dy))});
+// Only the fast phases (snap-ins, the ramped pull-back) get blur: a filter over a 3D World flattens it (~+2 s/frame),
+// and slow tracks would only gain 1–3 px of blur.
+const mbAxis = (m: {dx: number; dy: number}, max = 30) => {
+  const bx = shutterBlur(m.dx), by = shutterBlur(m.dy);
+  return bx >= by ? {sx: Math.min(max, bx), sy: 0} : {sx: 0, sy: Math.min(max, by)};
+};
 
 /** Floor grid (inside the World backdrop, so it follows the lens shift/zoom). */
 const SpaceBG: React.FC<{cam: CamSpec; from: number; floorY: number; intensity?: number; grid?: number}> = ({floorY, grid = 0.42}) =>
@@ -250,8 +255,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     return (
       <AbsoluteFill>
         <Sky cam={cam} from={from} />
-        <MotionBlur {...mbAxis(m)} threshold={1.5}>
-          <ChromaticAberration amount={lt < 22 ? ca : 0}>
+        <MotionBlur {...mbAxis(m)} threshold={lt < 14 ? 99 : 6}>
+          <ChromaticAberration amount={lt < 14 ? ca : 0}>
             <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.2} />}>
               <FieldSet f={f} />
             </World>
@@ -281,7 +286,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     return (
       <AbsoluteFill>
         <Sky cam={cam} from={from} />
-        <MotionBlur {...mbAxis(m)} threshold={1.5}>
+        <MotionBlur {...mbAxis(m)} threshold={6}>
           <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.1} />}>
             <FieldSet f={f} />
           </World>
@@ -313,7 +318,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     return (
       <AbsoluteFill>
         <Sky cam={cam} from={from} />
-        <MotionBlur {...mbAxis(m, 26)} threshold={2}>
+        <MotionBlur {...mbAxis(m, 26)} threshold={6}>
           <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={700} intensity={1} />}>
             <UITheme look="frost">
               <DashRig t={lt + L(108)} f={f} E={E} times={TIMES} beams={1} nf={[60, 380]} glow={0.25} crisp={{sig: 1.6}} />
