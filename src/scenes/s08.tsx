@@ -256,7 +256,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       <AbsoluteFill>
         <Sky cam={cam} from={from} />
         <MotionBlur {...mbAxis(m)} threshold={lt < 14 ? 99 : 6}>
-          <ChromaticAberration amount={lt < 14 ? ca : 0}>
+          <ChromaticAberration amount={0}>
             <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.2} />}>
               <FieldSet f={f} />
             </World>
