@@ -12,7 +12,7 @@
  *                          god rays + speed lines build, dolly-in accelerates (expo-in), copy is sucked into the core,
  *                          exposure blows to white at 104.
  *  PART B — DROP 2 (2794) · the Live Dashboard hero
- *   B1 104–106  (215–269)  DROP: flash-cut in, FlareBurst + shockwave rings + energy burst + CA. LOW-ANGLE (24 mm, ~100 px
+ *   B1 104–106  (215–269)  DROP: white-out → exposure decay, FlareBurst + shockwave rings + energy burst. LOW-ANGLE (24 mm, ~100 px
  *                          above the floor) lateral track along the 3D Signal Wall bar field pumping to kick/bands,
  *                          threshold colours, flares riding the brightest caps. "See every signal." (104.5).
  *   B2 106–108  (269–322)  WHIP → long-lens (55 mm) dutch side track down the wall, DOF, flares. "Live." punch on 106.
@@ -43,7 +43,7 @@ import {
 } from '../cine';
 import {
   SpaceBackdrop, DustField, Bokeh, GodRays, VolumetricBeams, SpeedLines, Glint, LensFlare, FlareBurst, Shockwave, EnergyBurst,
-  Flash, ChromaticAberration, HUDFrame, Reticle, impulse,
+  Flash, HUDFrame, impulse,
 } from '../vfx';
 import {Avatar, UITheme, SignalBars3D, signalValue} from '../ui';
 import {S0, lb, lin01, smoothstep, Copy, LiveDot, Scrim, Implosion, OldChat, projRect, Exposure, Lock} from './s08/kit';
@@ -248,27 +248,24 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     ];
     const at = (x: number) => addCam(camPath(x, keys), ...life(x, 0.7, 2, 26));
     const cam = at(lt);
-    const m = camMotion(at, lt, [0, FY - 200, 0]);
     const ph = project(cam, barTop(22, f));
     const pc = project(cam, [0, FY, 0]);
-    const ca = 2 + 16 * impulse(lt, 0, 1, 7);
     return (
       <AbsoluteFill>
         <Sky cam={cam} from={from} />
-        <MotionBlur {...mbAxis(m)} threshold={lt < 8 ? 99 : 6}>
-          <ChromaticAberration amount={lt < 8 ? ca : 0}>
-            <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.2} />}>
-              <FieldSet f={f} />
-            </World>
-          </ChromaticAberration>
-        </MotionBlur>
-        <CapFlares cam={cam} f={f} n={2} seed={3} />
-        <Shockwave x={pc.x} y={pc.y} at={DROP} squash={0.24} radius={1700} rings={2} thickness={110} />
-        <Shockwave x={ph.x} y={ph.y} at={DROP} rings={3} distort radius={1300} />
+        {/* no filter wrappers here: a filter over the 3D World flattens it (CA/motion blur cost +0.5–2 s at the drop);
+            the white-out → exposure decay and the shockwave's chromatic edge carry the hit */}
+        <World camera={cam} backdrop={<SpaceBG cam={cam} from={from} floorY={FY + 1} intensity={1.2} />}>
+          <FieldSet f={f} />
+        </World>
+        <CapFlares cam={cam} f={f} n={lt < 36 ? 1 : 2} seed={3} />
+        <Shockwave x={pc.x} y={pc.y} at={DROP} squash={0.24} radius={1700} rings={1} thickness={120} />
+        <Shockwave x={ph.x} y={ph.y} at={DROP} rings={2} distort radius={1300} />
         <EnergyBurst x={ph.x} y={ph.y} at={DROP} count={180} distance={820} />
         <FlareBurst x={ph.x} y={ph.y} at={DROP} dur={80} peak={2} sustain={0.35} seed={21} />
         <Flash at={DROP} dur={12} color="cyan" max={0.35} bloom x={ph.x} y={ph.y} />
         <DustField camX={-lt * 3} boost={kick(f) * 0.7} count={120} />
+        <Exposure o={Math.pow(1 - clamp(lt / 20), 2.6)} />
       </AbsoluteFill>
     );
   };
@@ -504,7 +501,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     {beat: 96, name: 'A1 beam', render: A1},
     {beat: 100, name: 'A2 avatar', in: lightLeakDissolve({dur: 30, color: 'violet', strength: 0.8}), render: A2},
     {beat: 102, name: 'A3 gather', in: cut(), render: A3},
-    {beat: 104, name: 'B1 drop wall', in: flashCut({dur: 18, split: 0, peak: 1}), render: B1},
+    {beat: 104, name: 'B1 drop wall', in: cut(), render: B1}, // the flash is an exposure overlay inside B1 (cheaper than flashCut's brightness filter)
     {beat: 106, name: 'B2 side track', in: whip({dir: 'right', dur: 10}), render: B2},
     {beat: 108, name: 'B3 pull-back', in: flashCut({dur: 8, color: '#BFF4FF', peak: 0.35}), render: B3},
     {beat: 110, name: 'B4 snap', in: glitchCut({dur: 8, slices: false, seed: 4}), render: B4},

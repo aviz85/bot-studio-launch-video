@@ -59,3 +59,12 @@
 - Overlapping coplanar 3D cards are very expensive (one frame took 20 s); giving each card its own depth brought it to ~2.9 s.
 - The kit Avatar has no both-eyes-open state; s10 copies s03's hero avatar art.
 - Heaviest frames: the 146 whip overlap (~3.3 s), the 156 zoom-through (~3.1–3.9 s), the 148 zoom-through (~2.1 s).
+
+## s08
+- Opens with a 6-frame fade from black at 2579, expecting s07 to decay. Exits with a zoomThrough out-half at 3224; s09 opens with `in: zoomThrough()` (s09 reports its opening matches). Make sure s08's cue sheet has the `swoosh_rev` ending at 3224 (s09 only cues the emerge whoosh).
+- MotionBlur (+~2 s) and ChromaticAberration (+~0.5 s) over a 3D World cost far more than documented.
+- flashCut's `brightness()` flattens the incoming 3D World and is expensive at the drop; s08 uses a plain cut plus an exposure overlay.
+- `shiftX`/`shiftY` move the World backdrop (same finding as s07/s09).
+- VFX `at`/`start` props take scene-local frames, not shot-local ones.
+- The shared Reticle is too faint on frost glass; s08 has a local `Lock`.
+- Heaviest frames: the first ~30 drop frames after 2794 (~1.5–1.6 s), the spin transition at 116 (~2.0 s).
