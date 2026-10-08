@@ -3,8 +3,9 @@
  * -----------------------------------------------------------------------------------------------------
  * SHOT LIST (cuts on B(k); slams land on the 1/16 after the kick, B(k+.25), where the SFX reads clean)
  *  PART A — "Three minds. One runtime."  (holo smoked-glass monoliths on a holographic floor in deep space)
- *   A1  64    JUDGE      low-angle hero, 24mm, dutch −7°. Judge monolith slams in from depth (lands 64.25):
- *                        floor shockwave, sparks, flare on the emblem, camera jolt. in: flash (in-half, from s05)
+ *   A1  64    JUDGE      low-angle hero, 22mm, dutch −8°. Judge monolith slams in from depth (lands 64.25):
+ *                        speed streaks, floor shockwave, sparks, flare on the emblem, camera jolt.
+ *                        in: flash in-half matching s05's flash out-half (dur 14, split .5, peak .9)
  *   A2  65.5  macro      half-beat insert: 50mm macro on Judge's live signal bars, shallow DOF.   hard cut
  *   A3  66    SPEAKER    whip right → ¾ dutch +8°, Speaker slams from deep right (66.25); bubbles pop 66.75/67.25
  *   A4  67.5  macro      half-beat insert: chat bubbles macro, 3rd bubble 67.75.                  hard cut
@@ -12,15 +13,20 @@
  *                        field checks ✓ 68.75 / 69.25 / 69.75
  *   A6  69    TRIO       flash → wide low-angle reveal of the arc + dormant core; "Three minds." ; power-up charge
  *   A7  70    CORE       flash → beams fire from all three emblems (70), core ignites (70.25): flare burst,
- *                        shockwave, god rays; orbiting camera; "One runtime." (70.5); accelerating push into core
+ *                        shockwave, god rays; orbiting camera; "One runtime." (70.5); accelerating push into the core
+ *                        with radial warp lines building to a whiteout exactly on 72
  *  PART B — "Measure meaning. Get typed signals."  (frost Judgment editor rebuilt as floating glass rows)
- *   B1  72    TYPE       zoom-through out of the core → macro on Type segment, Noul→Score snaps (72.25)
+ *   B1  72    TYPE       warp-through: whiteout flash cut (pairs with A7's push) + decaying warp lines + crash-in →
+ *                        grazing macro on the Type segment, Noul→Score snaps (72.25), reticle locks
  *   B2  73    CRITERIA   whip up → low lateral track; criteria rows 0 (73.25) and 1 (74.25) slam onto the glass
  *   B3  74.5  CRITERIA   whip left → high ¾ dutch; row 2 (75.25); rack focus to the measurement row
  *   B4  76    MEASURE    hard cut + crash zoom → macro: bar fills to 1.70 with glow (76→76.75), row 2 lights
  *   B5  77    SIGNALS    flash → typed-signal chips burst out (77.25/77.75/78.25/78.75) and orbit in 3D,
  *                        orbiting camera, rack focus card ↔ chips; "Get typed signals."
- *   B6  79    HERO       cut → hero wide of card + orbiting chips, lockup; whip out (right) at 80
+ *   B6  79    HERO       cut → high dutch wide of card + orbiting chips, lockup; whip out (right, dur 10) at 80 —
+ *                        out-half of the cross-scene whip; s07 opens with the matching in-half
+ *  Life: handheld + kickPush (GLOBAL frame) on every shot, jolts on every slam. Perf: off-screen monolith planes are
+ *  culled (they corrupt Chromium's 3D sort), DOF ramps in only after motion-blurred crash moves.
  * ===================================================================================================== */
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';

@@ -171,11 +171,8 @@ const EditorOverlay: React.FC<{f: number; rc: ResolvedCam}> = ({f, rc}) => {
   );
 };
 
-/** true while a whip transition is mid-smear over this shot (|d| small) */
-const whipBusy = (info: ShotInfo) => {
-  const ph = info.tin?.kind === 'whip' ? info.tin : info.tout?.kind === 'whip' ? info.tout : null;
-  return !!ph && Math.abs(ph.d) <= 3;
-};
+/** true in the outgoing shot's last smeared frames of a whip (it never comes back, so nothing can pop) */
+const whipBusy = (info: ShotInfo) => info.tout?.kind === 'whip' && info.tout.d >= -4;
 
 /* ------------------------------------------------------------------ */
 /* Scene                                                                */
