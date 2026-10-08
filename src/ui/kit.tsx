@@ -1,14 +1,19 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {C, FONT, DISPLAY, prog, expoOut, kick, rand, lerp, band, clamp} from '../lib';
+import {useUI, UITheme, Look, Tone, toneColors, Theme} from './theme';
+import {Rim, Sheen, GlassUnder, glassRoot} from './skin';
 
 /* ---------------- Icons ---------------- */
 type IP = {size?: number; color?: string; sw?: number};
-const Svg: React.FC<IP & {children: React.ReactNode}> = ({size = 24, color = C.plum, sw = 2, children}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </svg>
-);
+const Svg: React.FC<IP & {children: React.ReactNode}> = ({size = 24, color, sw = 2, children}) => {
+  const th = useUI();
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color ?? th.icon} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </svg>
+  );
+};
 export const Icon: Record<string, React.FC<IP>> = {
   home: (p) => <Svg {...p}><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></Svg>,
   layers: (p) => <Svg {...p}><path d="M12 3l9 5-9 5-9-5z" /><path d="M3 13l9 5 9-5" /><path d="M3 17.5l9 5 9-5" opacity={0.6} /></Svg>,
@@ -70,27 +75,78 @@ export const Avatar: React.FC<{size?: number; wink?: number; glow?: number}> = (
 };
 
 /* ---------------- Panels ---------------- */
-export const Card: React.FC<{style?: React.CSSProperties; children?: React.ReactNode; glass?: boolean}> = ({style, children, glass}) => (
-  <div
-    style={{
-      background: glass ? 'rgba(255,255,255,0.78)' : C.white,
-      borderRadius: 28,
-      boxShadow: '0 1px 0 rgba(255,255,255,0.9) inset, 0 30px 80px -20px rgba(57,41,75,0.35), 0 8px 24px -8px rgba(57,41,75,0.18)',
-      border: '1px solid rgba(255,255,255,0.9)',
-      fontFamily: FONT,
-      color: C.plum,
-      position: 'relative',
-      overflow: 'hidden',
-      ...style,
-    }}
-  >
-    {children}
-  </div>
-);
+export type CardProps = {
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+  /** extra-transparent fill */
+  glass?: boolean;
+  /** render this card (and its content) in a specific look */
+  look?: Look;
+  /** violet outer bloom 0..1.5 */
+  glow?: number;
+  /** light-sweep progress 0..1 */
+  sheen?: number;
+  /** rim intensity (default 1) */
+  rim?: number;
+  /** backdrop-filter blur px (default: theme.blur, normally 0 = fallback) */
+  blur?: number;
+  /** rim flash on "lock" 0..1 */
+  flash?: number;
+};
 
-export const Pill: React.FC<{bg?: string; color?: string; style?: React.CSSProperties; children: React.ReactNode}> = ({bg = C.lilac, color = C.plum, style, children}) => (
-  <div style={{display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 999, background: bg, color, fontFamily: FONT, fontWeight: 600, fontSize: 18, whiteSpace: 'nowrap', ...style}}>{children}</div>
-);
+const CardBody: React.FC<CardProps> = ({style, children, glass, glow, sheen, rim = 1, blur, flash = 0}) => {
+  const th = useUI();
+  return (
+    <div
+      style={{
+        borderRadius: 28,
+        fontFamily: FONT,
+        color: th.text,
+        position: 'relative',
+        overflow: 'hidden',
+        zIndex: 0,
+        ...glassRoot(th, {fill: glass ? th.surfaceGlass : th.surface, glow, blur, flash, shadow: 'card'}),
+        ...style,
+      }}
+    >
+      {th.look !== 'solid' && <GlassUnder th={th} />}
+      {children}
+      <Rim gradient={th.rim} width={th.rimWidth} opacity={rim * (1 + flash)} />
+      {flash > 0 && <Rim gradient={`linear-gradient(150deg, rgba(${th.glow2},1), rgba(255,255,255,0.9), rgba(${th.glow},0.8))`} width={th.rimWidth + 1} opacity={flash} />}
+      <Sheen p={sheen} color={th.dark ? '200,235,255' : '255,255,255'} strength={th.dark ? 0.35 : 0.6} />
+    </div>
+  );
+};
+
+/** Product card. Look-aware glass (frost by default); `solid` = v1 look. */
+export const Card: React.FC<CardProps> = (p) => (p.look ? <UITheme look={p.look}><CardBody {...p} /></UITheme> : <CardBody {...p} />);
+
+/** Map legacy explicit pill colours to semantic tones so old call-sites follow the theme. */
+const LEGACY_TONE: Record<string, Tone> = {
+  [C.lilac]: 'lilac', [C.lilac2]: 'lilac2', [C.pistachio]: 'pistachio', '#E3F3EA': 'green', '#DDF2E8': 'green', '#FCF0D6': 'amber', '#fff': 'white', '#FFF': 'white', '#ffffff': 'white', '#FFFFFF': 'white',
+};
+
+export const Pill: React.FC<{bg?: string; color?: string; style?: React.CSSProperties; children: React.ReactNode; tone?: Tone; glow?: number}> = ({bg, color, style, children, tone, glow = 0}) => {
+  const th = useUI();
+  const tn: Tone | undefined = tone ?? (bg === undefined ? 'lilac' : LEGACY_TONE[bg]);
+  const tc = tn ? toneColors(th, tn) : null;
+  const background = tc ? tc.bg : bg;
+  const fg = color && !(tn && th.look === 'holo' && (color === C.plum || color === C.green || color === C.purpleDeep)) ? color : tc ? tc.fg : C.plum;
+  return (
+    <div
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 999, background, color: fg, fontFamily: FONT, fontWeight: 600, fontSize: 18, whiteSpace: 'nowrap',
+        boxShadow: [tc?.border ? `inset 0 0 0 1.5px ${tc.border}` : '', th.dark && tn !== 'white' && tn !== 'ghost' ? `inset 0 0 0 1px rgba(255,255,255,0.08)` : '', glow > 0 ? `0 0 ${24 * glow}px rgba(${th.glow},${0.55 * glow})` : ''].filter(Boolean).join(', ') || undefined,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+/** Pick a colour by look: lk(th, light, holo) */
+export const lk = (th: Theme, light: string, dark: string) => (th.dark ? dark : light);
 
 /** Moving specular sweep across a surface (p: 0..1). */
 export const Shine: React.FC<{p: number; strength?: number; width?: number}> = ({p, strength = 0.75, width = 18}) => {
