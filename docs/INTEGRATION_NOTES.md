@@ -51,3 +51,11 @@
 - Chromium quirk: an off-screen `Obj` plane that is huge in projection corrupted the 3D sort and hard-clipped a different visible pane. s06 culls off-frame monoliths; other scenes may hit the same thing.
 - `zoomThrough` shows black frame edges for ~6 frames after the cut (incoming shot settles 0.9→1 scale); the stock version cost 4–9 s/frame here, so s06 rebuilt its beat-72 transition.
 - Heaviest frames: Clerk slam (1834), core ignition (1895), whip overlap (1776).
+
+## s10
+- The final hit cut is at 4298, where the kick is detected (B(160)=4299); the SFX recipe sits at 4299.
+- s10 opens with a flash in at 3761, which pairs with s09's flash ramp and push-in that peak on 3761.
+- MotionBlur is ~8× too expensive on many-layer 3D worlds (1.8 s → 15 s over the ~150-card wall). s10 uses speed streaks there.
+- Overlapping coplanar 3D cards are very expensive (one frame took 20 s); giving each card its own depth brought it to ~2.9 s.
+- The kit Avatar has no both-eyes-open state; s10 copies s03's hero avatar art.
+- Heaviest frames: the 146 whip overlap (~3.3 s), the 156 zoom-through (~3.1–3.9 s), the 148 zoom-through (~2.1 s).
