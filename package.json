@@ -1,0 +1,21 @@
+{
+  "name": "botstudio-launch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "mkdir -p public/designs && cp ../outputs/designs/*.png public/designs/",
+    "check": "tsc -p .",
+    "stills": "npm run assets && node stills.mjs",
+    "render": "npm run assets && node render.mjs"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.534",
+    "@remotion/cli": "^4.0.534",
+    "@remotion/media-utils": "^4.0.534",
+    "@remotion/renderer": "^4.0.534",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.534",
+    "typescript": "^5.6.3"
+  }
+}
