@@ -14,6 +14,8 @@ import {Scene as S08} from './scenes/s08';
 import {Scene as S09} from './scenes/s09';
 import {Scene as S10} from './scenes/s10';
 
+export const AUDIO_DELAY_FRAMES = 2;
+
 export const SCENE_COMPONENTS: Record<string, React.FC<{from: number; dur: number}>> = {
   s01: S01, s02: S02, s03: S03, s04: S04, s05: S05, s06: S06, s07: S07, s08: S08, s09: S09, s10: S10,
 };
@@ -42,7 +44,11 @@ export const Launch: React.FC = () => (
       );
     })}
     <Grade />
-    <Audio src={staticFile('mix.wav')} />
+    {/* The music's transients sit ~30 ms ahead of the B(k) grid the picture is cut to; a 2-frame
+        (33 ms) delay puts the drops and flash cuts on the hits (measured at 860, 2794, 4298). */}
+    <Sequence from={AUDIO_DELAY_FRAMES} name="Soundtrack">
+      <Audio src={staticFile('mix.wav')} />
+    </Sequence>
   </AbsoluteFill>
 );
 

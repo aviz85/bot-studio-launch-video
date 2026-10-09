@@ -37,6 +37,7 @@ npm run render                # copies the designs, then node render.mjs → out
 
 - `render.mjs` decodes `public/music.mp3` → `public/music.wav` if it is missing, re-runs the mix when any cue sheet is newer than `public/mix.wav`, and renders with `CONCURRENCY` tabs (default 4). It auto-detects a Chromium headless shell under `/opt/pw-browsers`; set `BROWSER_EXECUTABLE` to use another one.
 - `npm run assets` copies `../outputs/designs/*.png` into `public/designs/` (used by the s10 montage).
+- The soundtrack is delayed 2 frames (`AUDIO_DELAY_FRAMES` in `src/Root.tsx`): the music's transients sit ~30 ms ahead of the beat grid, and with the delay the drops at 860, 2794 and 4298 land within ±10 ms of their flash cuts.
 - Measured on the 4-core build box: a full `node render.mjs` at concurrency 4 took **28 min** (1,694 s for 4,591 frames ≈ 0.37 s of wall clock per frame, H.264 CRF 16 ≈ 800 MB master). Full-resolution stills cost more (mean ≈1.7 s, heaviest transition frames ≈3–3.7 s, none above 4 s); they are a quick way to find expensive frames, not a render-time estimate.
 
 ## Preview and check tools
