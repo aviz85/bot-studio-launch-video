@@ -307,8 +307,8 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
               <EnergyBurst x={le.x} y={le.y} at={CT.result} dur={46} count={110} distance={520} color="#B9FBE2" />
               <FlareBurst x={le.x} y={le.y} at={CT.result} dur={64} peak={1.5} scale={0.9} flash={0.35} sustain={0.15} seed={21} color="#B9FBE2" />
             </Frame>
-            {decay > 0 && <AbsoluteFill style={{background: '#04020A', opacity: 0.88 * decay}} />}
-            {decay > 0 && <Glint x={le.x} y={le.y} size={220} intensity={0.9 * decay * (1 - ss(L(96) - 6, L(96), t) * 0.3)} color="cyan" />}
+            {decay > 0 && <AbsoluteFill style={{background: '#04020A', opacity: 0.97 * decay}} />}
+            {decay > 0 && <Glint x={le.x} y={le.y} size={220} intensity={0.9 * decay * (1 - ss(L(96) - 6, L(96), t) * 0.8)} color="cyan" />}
           </>
         );
       },

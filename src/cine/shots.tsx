@@ -167,19 +167,31 @@ const txFrame = (tr: Transition, d: number, cutFrame: number): TxFrame => {
       const I = Math.exp(-Math.abs(d) / 2.6);
       const outSc = (dd: number) => 1 + (tr.depth - 1) * E.expoIn(clamp01((dd + pre) / pre));
       const inSc = (dd: number) => (dd < 0 ? mix(0.6, 0.9, smoothstep(0.3, 1, clamp01((dd + pre) / pre))) : mix(0.9, 1, E.expoOut(clamp01(dd / post))));
+      // Below 1× the incoming no longer covers the frame: its box edge read as a hard dark rectangle for the first frames
+      // after the cut (most visible in cross-scene in-halves, where no outgoing shot covers it). Feather the edge with a
+      // mask whose width follows the uncovered margin; it is dropped once the shot has landed.
+      const inStyle = (sc: number): React.CSSProperties => {
+        const st: React.CSSProperties = {transform: `scale(${sc.toFixed(4)})`};
+        if (sc < 0.995) {
+          const fx = Math.min(12, (1 - sc) * 90), fy = Math.min(16, (1 - sc) * 130);
+          const m = `linear-gradient(90deg, transparent, #000 ${fx.toFixed(2)}%, #000 ${(100 - fx).toFixed(2)}%, transparent), linear-gradient(180deg, transparent, #000 ${fy.toFixed(2)}%, #000 ${(100 - fy).toFixed(2)}%, transparent)`;
+          Object.assign(st, {WebkitMaskImage: m, maskImage: m, WebkitMaskComposite: 'source-in', maskComposite: 'intersect'});
+        }
+        return st;
+      };
       if (before) {
         const sc = outSc(d);
         const rate = outSc(d + 0.5) / outSc(d - 0.5) - 1;
         return {
           out: {style: {transform: `scale(${sc.toFixed(4)})`, opacity: 1 - smoothstep(0.5, 1, u)}},
-          in: u > 0.3 ? {style: {transform: `scale(${inSc(d).toFixed(4)})`}} : null,
+          in: u > 0.3 ? {style: inStyle(inSc(d))} : null,
           inOnTop: false,
           group: {zoom: tr.blur * Math.min(90, zoomBlurPx(rate) + 40 * smoothstep(0.4, 1, u))},
           overlay: <ZoomOverlay I={I} color={tr.color} />,
         };
       }
       const rate = inSc(d + 0.5) / inSc(d - 0.5) - 1;
-      return {in: {style: {transform: `scale(${inSc(d).toFixed(4)})`}}, group: {zoom: tr.blur * Math.min(90, zoomBlurPx(rate) + 36 * (1 - E.expoOut(v)))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
+      return {in: {style: inStyle(inSc(d))}, group: {zoom: tr.blur * Math.min(90, zoomBlurPx(rate) + 36 * (1 - E.expoOut(v)))}, overlay: <ZoomOverlay I={I} color={tr.color} />};
     }
     case 'flashCut': {
       const fl = before ? tr.peak * Math.pow(u, 2.2) : tr.peak * Math.pow(1 - v, 2.4);

@@ -334,17 +334,22 @@ export const GRADE = {
   /** Letterbox keyframes (global frames). Bars cover 70px in the intro, squeeze in the pre-drop silence,
    *  snap open on each drop, return for the breakdown and the end card. */
   letterbox: [
+    // intro + build (s01, s02): framed
     {frame: 0, h: 70},
     {frame: B(29.5), h: 70},
-    {frame: B(31.75), h: 118, ease: 'smooth'},
-    {frame: B(32), h: 0, ease: 'snap'},
-    {frame: B(96), h: 0},
-    {frame: B(98), h: 70, ease: 'smooth'},
-    {frame: B(102), h: 70},
+    {frame: B(31.75), h: 118, ease: 'smooth'},   // squeeze in the pre-drop silence
+    {frame: B(32), h: 0, ease: 'snap'},          // DROP 1: frame snaps open (s03–s07 stay full frame)
+    // breakdown (s08 A): the bars close WITH s07's decay to black, so the breakdown opens already framed — a touch
+    // tighter than the intro (more intimate). Copy there sits at y ≈ 800–880 and clears even the 118 px squeeze.
+    {frame: B(95.5), h: 0},
+    {frame: B(96), h: 84, ease: 'smooth'},
+    {frame: B(102), h: 84},
     {frame: B(103.75), h: 118, ease: 'smooth'},
-    {frame: B(104), h: 0, ease: 'snap'},
-    {frame: B(159.5), h: 0},
-    {frame: B(160), h: 70, ease: 'expo'},
+    {frame: B(104), h: 0, ease: 'snap'},         // DROP 2: open
+    // final hit: the montage stays open through its strobes; the bars arrive under the white flash of the hit
+    // (s10 cuts at 4298) and settle around the end card.
+    {frame: B(160) - 1, h: 0},
+    {frame: B(160) + 30, h: 70, ease: 'expo'},
   ] as LetterboxKey[],
   /** Grain multiplier over ranges (e.g. grittier in the breakdown). [fromFrame, toFrame, multiplier]. */
   grainBoost: [[B(96), B(104), 1.5]] as [number, number, number][],

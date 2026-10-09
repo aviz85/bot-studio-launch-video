@@ -401,45 +401,59 @@ const OrbBody: React.FC<GlassOrbNodeProps> = ({size = 170, label, icon, active =
   const body = dark
     ? `radial-gradient(circle at 34% 27%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.18) 9%, rgba(255,255,255,0) 22%), radial-gradient(circle at 50% 58%, rgba(${rgb},${0.08 + 0.12 * a}) 0%, rgba(${rgb},${0.16 + 0.14 * a}) 48%, rgba(${rgb},${0.5 + 0.2 * a}) 86%, rgba(235,250,255,0.75) 100%), rgba(14,8,30,0.55)`
     : `radial-gradient(circle at 34% 27%, rgba(255,255,255,1) 0%, rgba(255,255,255,0.5) 10%, rgba(255,255,255,0) 24%), radial-gradient(circle at 50% 58%, rgba(255,255,255,0.55) 0%, rgba(236,228,255,0.6) 45%, rgba(${rgb},${0.5 + 0.2 * a}) 90%, rgba(255,255,255,0.9) 100%)`;
+  // Everything is painted INSIDE the root's own box. The root is the full bloom extent (2R × 2R) and keeps the old s×s
+  // layout footprint through negative margins, so callers position it exactly as before. In a 3D context Chromium clips
+  // content that overflows a transformed element's box (the old 2.1s bloom showed a hard light square around every orb),
+  // and large-blur OUTER box-shadows on a circle also rasterise as squares — so the outer glow and the drop shadow are
+  // radial gradients now, and only inset shadows remain.
+  const R = s * 1.1, m = R - s / 2;
+  const pc = (r: number) => `${((r / R) * 100).toFixed(2)}%`; // radius → closest-side percentage of the root
+  const box = (d: number, dy = 0): React.CSSProperties => ({position: 'absolute', left: R - d / 2, top: R - d / 2 + dy, width: d, height: d, borderRadius: '50%'});
+  const glowR = s * 0.5 + s * 0.45 * a;
   return (
-    <div style={{position: 'relative', width: s, height: s, transform: `${billboard(face)} scale(${sc})`, opacity: p < 0.34 ? clamp(p * 3) : undefined, fontFamily: FONT, ...style}}>
-      {/* bloom */}
-      <div style={{position: 'absolute', left: -s * 0.55, top: -s * 0.55, width: s * 2.1, height: s * 2.1, borderRadius: '50%', background: `radial-gradient(closest-side, rgba(${rgb},${(dark ? 0.32 : 0.26) * (0.45 + a)}), rgba(${rgb},0) 100%)`}} />
+    <div style={{position: 'relative', width: R * 2, height: R * 2, margin: -m, transform: `${billboard(face)} scale(${sc})`, opacity: p < 0.34 ? clamp(p * 3) : undefined, fontFamily: FONT, ...style}}>
+      {/* bloom (+ the active outer glow, formerly a large-blur box-shadow) */}
+      <div style={{...box(R * 2), background: [
+        a > 0 ? `radial-gradient(closest-side, rgba(${rgb},0) ${pc(s * 0.46)}, rgba(${rgb},${(0.85 * a).toFixed(3)}) ${pc(s * 0.5)}, rgba(${rgb},${(0.32 * a).toFixed(3)}) ${pc(s * 0.5 + s * 0.16 * a)}, rgba(${rgb},0) ${pc(glowR)})` : '',
+        `radial-gradient(closest-side, rgba(${rgb},${((dark ? 0.32 : 0.26) * (0.45 + a)).toFixed(3)}), rgba(${rgb},0) ${pc(s * 1.05)})`,
+      ].filter(Boolean).join(', ')}} />
+      {/* soft drop shadow under the glass (gradient, offset down) */}
+      <div style={{...box(s * 1.1, s * 0.12), background: 'radial-gradient(closest-side, rgba(0,0,0,0.5) 62%, rgba(0,0,0,0) 100%)'}} />
       {/* pulse rings */}
       {a > 0.01 && [0, 0.5].map((k) => {
         const ph = ((t / 46 + k) % 1 + 1) % 1;
         const d = s * (1.04 + 0.75 * ph);
-        return <div key={k} style={{position: 'absolute', left: (s - d) / 2, top: (s - d) / 2, width: d, height: d, borderRadius: '50%', boxShadow: `inset 0 0 0 ${2.5 - 1.5 * ph}px rgba(${rgb},${a * (1 - ph) * 0.9}), 0 0 ${14 * (1 - ph)}px rgba(${rgb},${a * (1 - ph) * 0.6})`}} />;
+        return <div key={k} style={{...box(d), boxShadow: `inset 0 0 0 ${2.5 - 1.5 * ph}px rgba(${rgb},${a * (1 - ph) * 0.9}), 0 0 ${14 * (1 - ph)}px rgba(${rgb},${a * (1 - ph) * 0.6})`}} />;
       })}
-      {/* orbit ring, back half (2.5D: no plane intersections → no BSP artefacts) */}
-      {a > 0.01 && <OrbitHalf s={s} rgb={rgb} a={a} t={t} half="back" />}
-      {/* glass body */}
-      <div
-        style={{
-          position: 'absolute', inset: 0, borderRadius: '50%', background: body,
-          boxShadow: [
-            `inset 0 0 0 ${dark ? 1.5 : 2}px rgba(255,255,255,${dark ? 0.45 : 0.85})`,
-            `inset ${-s * 0.06}px ${-s * 0.09}px ${s * 0.18}px rgba(${rgb},${dark ? 0.55 : 0.45})`,
-            `inset ${s * 0.04}px ${s * 0.05}px ${s * 0.12}px rgba(255,255,255,${dark ? 0.25 : 0.6})`,
-            `0 ${s * 0.12}px ${s * 0.26}px -${s * 0.1}px rgba(0,0,0,0.55)`,
-            a > 0 ? `0 0 ${s * 0.45 * a}px rgba(${rgb},${0.85 * a})` : '',
-          ].filter(Boolean).join(', '),
-        }}
-      >
-        {/* bottom caustic */}
-        <div style={{position: 'absolute', left: '14%', right: '14%', bottom: '5%', height: '34%', borderRadius: '50%', background: `radial-gradient(50% 60% at 50% 100%, rgba(${rgb},${0.55 + 0.35 * a}), rgba(${rgb},0) 100%)`}} />
-        {/* specular */}
-        <div style={{position: 'absolute', left: '18%', top: '11%', width: '32%', height: '17%', borderRadius: '50%', transform: 'rotate(-32deg)', background: 'radial-gradient(closest-side, rgba(255,255,255,0.95), rgba(255,255,255,0) 100%)'}} />
+      <div style={{position: 'absolute', left: m, top: m, width: s, height: s}}>
+        {/* orbit ring, back half (2.5D: no plane intersections → no BSP artefacts) */}
+        {a > 0.01 && <OrbitHalf s={s} rgb={rgb} a={a} t={t} half="back" />}
+        {/* glass body */}
+        <div
+          style={{
+            position: 'absolute', inset: 0, borderRadius: '50%', background: body,
+            boxShadow: [
+              `inset 0 0 0 ${dark ? 1.5 : 2}px rgba(255,255,255,${dark ? 0.45 : 0.85})`,
+              `inset ${-s * 0.06}px ${-s * 0.09}px ${s * 0.18}px rgba(${rgb},${dark ? 0.55 : 0.45})`,
+              `inset ${s * 0.04}px ${s * 0.05}px ${s * 0.12}px rgba(255,255,255,${dark ? 0.25 : 0.6})`,
+            ].join(', '),
+          }}
+        >
+          {/* bottom caustic */}
+          <div style={{position: 'absolute', left: '14%', right: '14%', bottom: '5%', height: '34%', borderRadius: '50%', background: `radial-gradient(50% 60% at 50% 100%, rgba(${rgb},${0.55 + 0.35 * a}), rgba(${rgb},0) 100%)`}} />
+          {/* specular */}
+          <div style={{position: 'absolute', left: '18%', top: '11%', width: '32%', height: '17%', borderRadius: '50%', transform: 'rotate(-32deg)', background: 'radial-gradient(closest-side, rgba(255,255,255,0.95), rgba(255,255,255,0) 100%)'}} />
+        </div>
+        {/* content */}
+        <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s * 0.04}}>
+          {I && <div style={{filter: dark ? `drop-shadow(0 0 ${s * 0.04}px rgba(${rgb},0.9))` : undefined, marginLeft: start ? s * 0.03 : 0}}><I size={s * 0.22} color={dark ? '#fff' : C.plum} sw={2} /></div>}
+          {label && labelPos === 'inside' && <div style={{fontSize: Math.max(13, s * 0.105), fontWeight: 650, color: dark ? '#F6F2FF' : C.plum, textShadow: dark ? `0 0 ${s * 0.06}px rgba(${rgb},0.9)` : '0 1px 0 rgba(255,255,255,0.6)', whiteSpace: 'nowrap'}}>{label}</div>}
+        </div>
+        {a > 0.01 && <OrbitHalf s={s} rgb={rgb} a={a} t={t} half="front" />}
+        {label && labelPos === 'below' && (
+          <div style={{position: 'absolute', left: '50%', top: s + s * 0.12, transform: 'translateX(-50%)', padding: `${s * 0.04}px ${s * 0.1}px`, borderRadius: 999, whiteSpace: 'nowrap', fontSize: Math.max(14, s * 0.11), fontWeight: 650, color: th.text, background: dark ? 'rgba(20,10,40,0.6)' : 'rgba(255,255,255,0.8)', boxShadow: `inset 0 0 0 1px rgba(${rgb},0.6), 0 0 ${s * 0.12 * (0.4 + a)}px rgba(${rgb},0.5)`}}>{label}</div>
+        )}
       </div>
-      {/* content */}
-      <div style={{position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: s * 0.04}}>
-        {I && <div style={{filter: dark ? `drop-shadow(0 0 ${s * 0.04}px rgba(${rgb},0.9))` : undefined, marginLeft: start ? s * 0.03 : 0}}><I size={s * 0.22} color={dark ? '#fff' : C.plum} sw={2} /></div>}
-        {label && labelPos === 'inside' && <div style={{fontSize: Math.max(13, s * 0.105), fontWeight: 650, color: dark ? '#F6F2FF' : C.plum, textShadow: dark ? `0 0 ${s * 0.06}px rgba(${rgb},0.9)` : '0 1px 0 rgba(255,255,255,0.6)', whiteSpace: 'nowrap'}}>{label}</div>}
-      </div>
-      {a > 0.01 && <OrbitHalf s={s} rgb={rgb} a={a} t={t} half="front" />}
-      {label && labelPos === 'below' && (
-        <div style={{position: 'absolute', left: '50%', top: s + s * 0.12, transform: 'translateX(-50%)', padding: `${s * 0.04}px ${s * 0.1}px`, borderRadius: 999, whiteSpace: 'nowrap', fontSize: Math.max(14, s * 0.11), fontWeight: 650, color: th.text, background: dark ? 'rgba(20,10,40,0.6)' : 'rgba(255,255,255,0.8)', boxShadow: `inset 0 0 0 1px rgba(${rgb},0.6), 0 0 ${s * 0.12 * (0.4 + a)}px rgba(${rgb},0.5)`}}>{label}</div>
-      )}
     </div>
   );
 };

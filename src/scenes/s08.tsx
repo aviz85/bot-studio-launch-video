@@ -554,6 +554,15 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
       {t >= L(104) && <HUDFrame start={L(104) + 4} from={from} title="Bot Studio // Live" subtitle="Turn 08 · collect_details" footer="Judge · Speaker · Clerk" opacity={0.7} />}
 
       <Exposure o={fadeIn} color="#020106" />
+      {/* zoom-through exit into s09: this out-half has no incoming picture behind the fading chat, so instead of dipping
+          to black on the last frame it blooms into the warp core that s09's in-half opens on (integration fix). */}
+      <CoreBloom o={Math.pow(lin01(t, dur - 6, 5), 1.6)} />
     </AbsoluteFill>
   );
 };
+
+/** Screen-blended warp-core bloom (centre white → cyan → violet) used on the last frames of the zoom-through exit. */
+const CoreBloom: React.FC<{o: number}> = ({o}) =>
+  o <= 0.003 ? null : (
+    <AbsoluteFill style={{pointerEvents: 'none', mixBlendMode: 'screen', background: `radial-gradient(circle at 50% 50%, rgba(255,255,255,${(0.95 * o).toFixed(3)}) 0%, rgba(207,246,255,${(0.75 * o).toFixed(3)}) 14%, rgba(160,130,255,${(0.32 * o).toFixed(3)}) 42%, rgba(106,69,224,${(0.1 * o).toFixed(3)}) 65%, transparent 85%)`}} />
+  );

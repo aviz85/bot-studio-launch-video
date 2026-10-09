@@ -44,32 +44,44 @@ export const Icon: Record<string, React.FC<IP>> = {
 };
 
 /* ---------------- Bot avatar (winking robot) ---------------- */
+/** The Bot Studio avatar (brand construction shared with the s03 hero logo): deep-violet medallion, white face, the
+ *  real logo's "<" wink chevron. wink: 0 = both eyes open, 0..0.7 = right eye closing, ≥ 0.7 = brand wink "<" (default). */
 export const Avatar: React.FC<{size?: number; wink?: number; glow?: number}> = ({size = 64, wink = 1, glow = 0}) => {
-  const eyeH = lerp(5.2, 0.6, clamp(wink));
+  const w = clamp(wink);
+  const ry = Math.max(0.5, 3.6 * (1 - w / 0.7));
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" style={{overflow: 'visible', filter: glow ? `drop-shadow(0 0 ${12 * glow}px rgba(140,107,234,${0.8 * glow}))` : undefined}}>
       <defs>
-        <radialGradient id="avbg" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#E9E0FF" />
-          <stop offset="100%" stopColor="#B49BF2" />
+        <radialGradient id="avbg2" cx="32%" cy="26%" r="85%">
+          <stop offset="0%" stopColor="#C9B6FF" />
+          <stop offset="45%" stopColor="#9677F2" />
+          <stop offset="100%" stopColor="#5B36D6" />
         </radialGradient>
-        <linearGradient id="avface" x1="0" y1="0" x2="0" y2="1">
+        <radialGradient id="avhi2" cx="30%" cy="18%" r="55%">
+          <stop offset="0%" stopColor="#FFFFFF" stopOpacity={0.55} />
+          <stop offset="100%" stopColor="#FFFFFF" stopOpacity={0} />
+        </radialGradient>
+        <linearGradient id="avface2" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="100%" stopColor="#F1ECFB" />
+          <stop offset="100%" stopColor="#EEE8FB" />
         </linearGradient>
       </defs>
-      <circle cx="32" cy="32" r="31" fill="url(#avbg)" />
-      <line x1="32" y1="9" x2="32" y2="15" stroke={C.plum} strokeWidth="2.6" strokeLinecap="round" />
-      <circle cx="32" cy="7.5" r="3" fill={C.purpleDeep} />
-      <rect x="13" y="16" width="38" height="32" rx="14" fill="url(#avface)" stroke={C.plum} strokeWidth="2.6" />
-      <rect x="9" y="27" width="5" height="10" rx="2.5" fill={C.purple} />
-      <rect x="50" y="27" width="5" height="10" rx="2.5" fill={C.purple} />
-      <ellipse cx="24.5" cy="30" rx="3.2" ry="3.6" fill={C.plum} />
-      {/* winking eye */}
-      <path d={`M36 ${31 - eyeH / 2} q 4.5 ${-eyeH} 9 0`} stroke={C.plum} strokeWidth="2.8" fill="none" strokeLinecap="round" />
-      <path d="M24 38.5 q 8 6 16 0" stroke={C.plum} strokeWidth="2.8" fill="none" strokeLinecap="round" />
-      <circle cx="20" cy="37" r="2.4" fill="#F7B6D2" opacity={0.7} />
-      <circle cx="44" cy="37" r="2.4" fill="#F7B6D2" opacity={0.7} />
+      <circle cx="32" cy="32" r="31.4" fill="url(#avbg2)" />
+      <circle cx="32" cy="32" r="31.4" fill="url(#avhi2)" />
+      <circle cx="32" cy="32" r="30.6" fill="none" stroke="#E9E0FF" strokeOpacity={0.55} strokeWidth="0.8" />
+      <line x1="32" y1="9.5" x2="32" y2="15.5" stroke={C.plum} strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="32" cy="7.6" r="3" fill="#2C1E40" />
+      <rect x="13" y="16" width="38" height="32" rx="14" fill="url(#avface2)" />
+      <rect x="9.2" y="27" width="4.6" height="10" rx="2.3" fill="#E4DBF7" />
+      <rect x="50.2" y="27" width="4.6" height="10" rx="2.3" fill="#E4DBF7" />
+      <ellipse cx="24.2" cy="30.2" rx="3.2" ry="3.6" fill={C.plum} />
+      {/* right eye: open → closing → brand wink chevron */}
+      {w >= 0.7
+        ? <path d="M44.6 26.6 L37.6 30.4 L44.6 34.2" stroke={C.plum} strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        : <ellipse cx="40.6" cy="30.2" rx="3.2" ry={ry} fill={C.plum} />}
+      <path d="M24 38.4 q 8 6.2 16 0" stroke={C.plum} strokeWidth="2.9" fill="none" strokeLinecap="round" />
+      <circle cx="19.6" cy="37.2" r="2.3" fill="#F7B6D2" opacity={0.75} />
+      <circle cx="44.4" cy="37.2" r="2.3" fill="#F7B6D2" opacity={0.75} />
     </svg>
   );
 };

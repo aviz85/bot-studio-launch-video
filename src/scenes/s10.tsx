@@ -165,7 +165,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
         const cam = addCam(at(lt), handheld(lt, 0.9, 5), kickPush(f, 26));
         return (
           <>
-            <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4200, 11000], sweeps: [[lb(146) - 16, 300]], sparkle: 170, lite: !!info.tin && info.tin.d < 2}} rays={0} />
+            <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [4200, 11000], sweeps: [[lb(146) - 16, 300]], sparkle: 170, lite: (!!info.tin && info.tin.d < 2) || !!info.tout}} rays={0} />
             <LightStreak start={lb(146) - 4} dur={26} angle={-14} count={6} spread={300} offset={-120} length={1300} color="cyan" secondary="violet" intensity={0.9} frame={t} seed={11} />
           </>
         );
@@ -173,11 +173,12 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     },
     {
       name: 'A5 infinite', from: lb(148), to: lb(150.5), in: zoomThrough({dur: 14, depth: 2.6}),
-      render: (lt) => {
+      // lite LOD while the zoom-through overlaps two factory worlds (integration: those frames peaked at ~3.8 s)
+      render: (lt, _p, info) => {
         const at = (x: number) => camPath(A5_RAMP.time(x), A5_KEYS);
         const cam = addCam(at(lt), handheld(lt, 0.5, 6), kickZoom(f, 0.015));
         const st = clamp01((A5_RAMP.speed(lt) - 1) / 2.4) * 0.7;
-        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [6500, 14500], sweeps: [[lb(150) - 20, -420]], sparkle: 200}} streak={[st, -A5_RAMP.time(lt) * 0.05]} glint={0.3} rays={0.25} />;
+        return <FactoryFrame t={t} f={f} from={from} cam={cam} opts={{look: 'holo', fog: [6500, 14500], sweeps: [[lb(150) - 20, -420]], sparkle: 200, lite: !!info.tin && info.tin.d < 3}} streak={[st, -A5_RAMP.time(lt) * 0.05]} glint={0.3} rays={0.25} />;
       },
     },
     {
@@ -202,7 +203,7 @@ export const Scene: React.FC<SceneProps> = ({from, dur}) => {
     whip({dir: 'right', dur: 10, seed: 3}),
     flashCut({dur: 8, peak: 0.85}),
     whip({dir: 'up', dur: 9, seed: 4}),
-    zoomThrough({dur: 12, depth: 2.2}),
+    zoomThrough({dur: 12, depth: 1.8}), // depth 2.2 → 1.8: the outgoing pane rasterised at 2.2× peaked at ~3.9 s/frame
     whip({dir: 'left', dur: 9, seed: 5}),
     flashCut({dur: 8, peak: 0.9, color: '#BFF4FF'}),
     glitchCut({dur: 7, slices: false, seed: 7}),

@@ -145,7 +145,7 @@ Heights come from `signalValue(i, f, live)`, which is audio-reactive (pass the G
 ```tsx
 <GlassOrbNode size={180} label="collect_details" icon="doc" active={1} t={t} tone="cyan" face={{rx, ry, rz}} />
 ```
-The orb has a fresnel rim, a specular highlight, a bottom caustic and a bloom. When `active` is set it adds pulse rings and an orbit ring with a travelling dot. The orbit ring is drawn as 2.5D back and front halves; there are no intersecting planes (see §3).
+The orb has a fresnel rim, a specular highlight, a bottom caustic and a bloom. Everything is painted inside the root's own box (the root is 2.2× the orb diameter with negative margins, so the layout footprint is still `size`×`size`), and the outer glow and drop shadow are radial gradients: no overflow, so no clipped light square in 3D. When `active` is set it adds pulse rings and an orbit ring with a travelling dot. The orbit ring is drawn as 2.5D back and front halves; there are no intersecting planes (see §3).
 
 Props: `size` (170), `label`, `icon` (an `Icon` key), `active` (0..1), `t`, `tone` (`'lilac'|'cyan'|'green'|'amber'`), `start` (green with a play glyph), `labelPos` (`'inside'|'below'`), `p` (reveal 0..1), `face` (billboard), `look`.
 

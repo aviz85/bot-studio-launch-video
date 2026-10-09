@@ -324,7 +324,7 @@ Opaque deep-violet space: elliptical base gradient `#140828 → #04020A`, drifti
 | `haze` / `horizon` | number | 0.6 / 640 | horizon haze (set 0 when there is no floor) |
 | `audio` | number | 1 | breathing amount |
 | `from` | number | 0 | **pass your scene `from`** for audio sync |
-| `camX`, `camY` | number | 0 | parallax (nebula 0.15×, stars 0.05×) |
+| `camX`, `camY` | number | 0 | parallax (nebula 0.15×, stars 0.05×). The nebula term is soft-clamped (tanh) to the texture margin inside the component, so any value is safe — no hard edge |
 | `seed`, `frame` | | | |
 
 ### `HoloGrid`
@@ -398,10 +398,10 @@ export const GRADE = {
     {frame: 0, h: 70}, {frame: B(29.5), h: 70},
     {frame: B(31.75), h: 118, ease: 'smooth'},   // squeeze in the pre-drop silence
     {frame: B(32), h: 0, ease: 'snap'},          // DROP 1: frame snaps open
-    {frame: B(96), h: 0}, {frame: B(98), h: 70, ease: 'smooth'},   // breakdown
-    {frame: B(102), h: 70}, {frame: B(103.75), h: 118, ease: 'smooth'},
+    {frame: B(95.5), h: 0}, {frame: B(96), h: 84, ease: 'smooth'}, // breakdown: closes with s07's decay, a touch tighter
+    {frame: B(102), h: 84}, {frame: B(103.75), h: 118, ease: 'smooth'},
     {frame: B(104), h: 0, ease: 'snap'},         // DROP 2
-    {frame: B(159.5), h: 0}, {frame: B(160), h: 70, ease: 'expo'},  // end card
+    {frame: B(160) - 1, h: 0}, {frame: B(160) + 30, h: 70, ease: 'expo'},  // end card: bars arrive under the final-hit flash
   ],
   grainBoost: [[B(96), B(104), 1.5]],            // grittier breakdown
 };

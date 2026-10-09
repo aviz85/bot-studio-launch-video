@@ -68,3 +68,42 @@
 - VFX `at`/`start` props take scene-local frames, not shot-local ones.
 - The shared Reticle is too faint on frost glass; s08 has a local `Lock`.
 - Heaviest frames: the first ~30 drop frames after 2794 (~1.5–1.6 s), the spin transition at 116 (~2.0 s).
+
+---
+
+# Integration pass (agent 15): what was resolved
+
+## Boundaries (checked in the full film, every 2 frames from cut−8 to cut+10, with the grade)
+| Cut | Pairing | Result |
+| --- | --- | --- |
+| 430 s01→s02 | CRT-off collapse to a dot → black → the core ignites on the b16 kick | OK as designed (the new light is a fresh ignition, not a match cut) |
+| 860 s02→s03 | glint at centre, near-black 859 → in-only white flash + FlareBurst, letterbox snaps open | OK |
+| 1075 s03→s04 | s03 in-camera whip right (image travels left, accelerating) → s04 `in: whip right` | OK, one whip SFX (s03) |
+| 1397 s04→s05 | zoom-through into the collect_details orb → s05 emerges from the start orb | OK; s04 owns the `swoosh_rev`, s05 the emerge whoosh |
+| 1719 s05→s06 | flash out-half (peak 0.9, #E6FBFF) → s06 matching in-half | OK |
+| 2149 s06→s07 | whip right out-half → whip right in-half | OK; **removed s06's duplicate `whip` cue** (s07 owns it) |
+| 2579 s07→s08 | s07 decays to black → s08 6-frame fade from black | **s07 decay deepened** (overlay 0.88→0.97, last glint fades out) so the cut is not a small pop |
+| 2794 drop 2 | white-out → Live Dashboard, letterbox snaps open | OK |
+| 3224 s08→s09 | zoom-through out-half → s09 zoom-through in-half | **Fixed a 1-frame dip to near-black at 3223** (the out-half has no incoming picture behind the fading chat): s08 now blooms into the warp core s09 opens on (`CoreBloom` in s08.tsx). `swoosh_rev` confirmed in s08's sheet |
+| 3761 s09→s10 | flash ramp + push-in peaking on 3761 → s10 in-only flash | OK |
+| 4298 final hit | montage strobes → white flash → end card | OK; the letterbox now arrives under the flash instead of during the strobes |
+
+## Shared modules
+- `ui/holo.tsx` **GlassOrbNode**: everything paints inside the root's own box (root = 2.2× the orb, negative margins keep the old `size`×`size` footprint); the active outer glow and the drop shadow are radial gradients, not large-blur outer box-shadows. The light squares in demo:glass (frames 380/415) are gone.
+- `vfx/env.tsx` **SpaceBackdrop**: the nebula's camera parallax is soft-clamped (tanh) to the texture margin left after the drift, and the texture is drawn 4% larger for more room. Any camX/camY is now safe.
+- `ui/kit.tsx` **Avatar** now uses the s03 hero construction (deep-violet medallion, brand "<" wink chevron) with a real open/closing/wink range: wink 0 = both eyes open, ≥ 0.7 = chevron. s02, s07, s08 and s09 now match s03/s10.
+- `cine/shots.tsx` **zoomThrough**: while the incoming is below 1× its box edge used to show as a hard dark rectangle for the first frames after the cut (the s06 report); the incoming now gets a feathered mask whose width follows the uncovered margin, removed once it lands.
+- Not changed (scenes already work around them locally): lens `shiftX/shiftY` moving the World backdrop, `Beam3D` clipping, `Obj nearFade` measuring centre depth, faint shared `Reticle`.
+
+## Cost
+- 41 full-res stills across the film (incl. every listed heavy transition): mean ≈1.7 s, worst ≈3.9 s (s10 156 zoom-through) → after integration ≈3.4 s (montage zoom-through depth 2.2→1.8; lite card LOD on the 148 zoom-through overlap). No frame above 4 s.
+- `renderMedia` is far cheaper per frame than stills: see README for the measured full render.
+
+## Sound
+- Boundary dedupe: s06's `whip` at 2149 removed (s07 owns it); s07's `downlifter` at 2552 removed (it overlapped s08's on 2579, now -16). The `swoosh_rev` ending at 3224 is in s08's sheet, the emerge whoosh in s09's.
+- Density: 471 → 405 cues. Removed layered UI clutter (glass ticks doubled on blips, chip blips between bubble pops, texture `data_chatter` under hits, extra shimmers and zaps on already-busy frames, stamps on the same frame as a whip) and lowered a few secondary layers. Kept the tonal blip motifs (C6→Eb6→F6→Ab6→C7), the drop stacks at 860/2794/4299 and every transition whip/swoosh. At most ~3 prominent hits per bar except the drop and montage bars.
+- Sync: every whip/swoosh_rev/impact/glitch/boom cue sits within 1 frame of a quarter-beat grid line and on its visual cut.
+- Final mix (`python3 sfx/mix.py`): -15.2 LUFS integrated, -1.18 dBTP (AAC in the mp4: -1.1 dBTP), 0 clipped samples, limiter max 1.2 dB, 0 unknown names, audit 405 clear / 0 buried / 0 hot.
+
+## Grade
+- Letterbox: 70 px intro/build, squeeze to 118 before drop 1, open for drop 1; the breakdown bars now close with s07's decay (95.5→96) at 84 px, squeeze to 118, open on drop 2; the end-card bars arrive under the final-hit flash (4298→4328) instead of during the montage strobes. No copy or key UI sits under the bars (copy in letterboxed sections is at y ≈ 220–880). Grain unchanged (0.05, ×1.5 in the breakdown).

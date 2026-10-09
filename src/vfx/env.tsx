@@ -73,7 +73,7 @@ export type SpaceBackdropProps = {
   audio?: number;
   /** Global frame offset of the current Sequence (scene `from`) — needed for audio sync. */
   from?: number;
-  /** Camera parallax offset in px (nebula moves 0.15×, stars 0.05×). */
+  /** Camera parallax offset in px (nebula moves 0.15×, soft-clamped to the texture margin so any value is safe; stars 0.05×). */
   camX?: number;
   camY?: number;
   seed?: number;
@@ -104,9 +104,14 @@ export const SpaceBackdrop: React.FC<SpaceBackdropProps> = ({intensity = 1, pale
       [0.12, 0.8, 400, VC.cyan, 0.04],
     ];
     for (const [gx, gy, r, c, a] of glows) radialFill(s, gx * W + camX * 0.1, gy * H + camY * 0.1, r, [[0, rgba(c, a * gA)], [0.5, rgba(c, a * gA * 0.35)], [1, rgba(c, 0)]]);
-    const dx = Math.sin(f * 0.0021 + seed) * 40 + camX * 0.15;
-    const dy = Math.cos(f * 0.0017 + seed) * 22 + camY * 0.15;
-    const ns = 1.12 + 0.03 * Math.sin(f * 0.003) + 0.012 * k * audio;
+    // The nebula texture is drawn oversized; its margin is all the room the drift + camera parallax have. Large camX/camY
+    // used to expose the texture's hard edge, so the parallax term is soft-clamped (tanh: linear for small moves, smoothly
+    // saturating) to the margin that is left after the slow drift. Scenes no longer need to clamp camX/camY themselves.
+    const ns = 1.16 + 0.03 * Math.sin(f * 0.003) + 0.012 * k * audio;
+    const driftX = Math.sin(f * 0.0021 + seed) * 40, driftY = Math.cos(f * 0.0017 + seed) * 22;
+    const soft = (v: number, lim: number) => (lim <= 0 ? 0 : lim * Math.tanh(v / lim));
+    const dx = driftX + soft(camX * 0.15, W * (ns - 1) / 2 - Math.abs(driftX) - 4);
+    const dy = driftY + soft(camY * 0.15, H * (ns - 1) / 2 - Math.abs(driftY) - 4);
     s.globalAlpha = clamp01(0.62 * intensity * breath);
     const nw = W * ns, nh = H * ns;
     s.drawImage(nebulaTexture(seed, palette as NebulaPal), W / 2 - nw / 2 + dx, H / 2 - nh / 2 + dy, nw, nh);
