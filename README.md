@@ -229,6 +229,30 @@ On top of the aim:
 
 The `FloorGrid` shows why this matters. A CSS 3D plane that size costs **0.5–2 s per frame** to render. `FloorGrid` uses the same camera math to project the grid lines and draws them as one batched SVG in about **1 ms**. CSS 3D is kept for the "real" objects, and everything else is drawn in 2D through the exact same camera.
 
+### Is it a 3D engine built from scratch?
+
+Half of one. The film built the **camera and scene half** itself (about 1,700 lines in `src/cine/`) and borrowed the **rendering half** from Chromium.
+
+**Built from scratch:**
+
+- **Vector and matrix math** (`src/cine/math.ts`): 4×4 matrices, rotations, the view matrix.
+- **A full camera model:** lens to perspective, orbit and look-at aiming, a right / up / forward basis.
+- **Its own projection** (`project()`): any 3D point to a screen pixel, independent of the browser.
+- **Depth-based logic:** depth of field, culling behind the lens, near-lens fading, billboards.
+- **Animation and editing:** Hermite keyframes, speed ramps, beat-synced camera moves, a beat-accurate shot sequencer.
+
+**Borrowed from Chromium:**
+
+- **Drawing the 3D:** perspective, `preserve-3d` layer composition and the final pixels all come from the browser's CSS 3D compositor.
+
+**What a real 3D engine has that this doesn't:**
+
+- **No meshes or polygons.** Every object is a flat plane (a `<div>`) at an angle.
+- **No lighting, shading or shadows.** All the "light" is faked with gradients and additive canvas layers.
+- **No real z-buffer.** Overlap comes from Chromium's layer sorting.
+
+The point of owning the math is that canvas and SVG effects can be drawn in **exactly the same space** as the CSS objects. The floor grid, flares and HUD reticles all project through the same camera with `project()`. So it isn't a game engine. It's closer to **a virtual film camera layered on top of the browser**: it builds exactly what a product film needs and nothing more.
+
 ---
 
 ## Story and edit map
