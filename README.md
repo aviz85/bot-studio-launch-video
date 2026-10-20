@@ -18,13 +18,14 @@ A 76.5-second, music-only, sci-fi launch film for **Bot Studio**, a bot builder 
 
 1. [Quick start](#quick-start)
 2. [How the film works](#how-the-film-works)
-3. [Story and edit map](#story-and-edit-map)
-4. [Project layout](#project-layout)
-5. [Preview and check tools](#preview-and-check-tools)
-6. [The rules that keep it reliable](#the-rules-that-keep-it-reliable)
-7. [How it was made](#how-it-was-made)
-8. [Further reading](#further-reading)
-9. [Provenance and licensing](#provenance-and-licensing)
+3. [Rendering technique: 3D without WebGL](#rendering-technique-3d-without-webgl)
+4. [Story and edit map](#story-and-edit-map)
+5. [Project layout](#project-layout)
+6. [Preview and check tools](#preview-and-check-tools)
+7. [The rules that keep it reliable](#the-rules-that-keep-it-reliable)
+8. [How it was made](#how-it-was-made)
+9. [Further reading](#further-reading)
+10. [Provenance and licensing](#provenance-and-licensing)
 
 ---
 
@@ -114,6 +115,37 @@ There are no sample files. `sfx/lib.py` is a library of procedural synthesizers 
 `sfx/mix.py` renders every cue at its frame, snaps near-grid cues to the exact musical time, ducks the music under big hits, then bus-compresses and true-peak-limits the result into `public/mix.wav`. The full sound list is in [`sfx/CATALOG.md`](sfx/CATALOG.md).
 
 **Sync detail:** the music's transients sit about 30 ms ahead of the mathematical beat grid, so the soundtrack is delayed by 2 frames (`AUDIO_DELAY_FRAMES` in `src/Root.tsx`). With that delay, all three drops land within ±10 ms of their flash cuts.
+
+---
+
+## Rendering technique: 3D without WebGL
+
+The film looks like a 3D motion-graphics piece, but it contains **no WebGL, no three.js and no 3D models**. Its core is HTML elements placed in 3D space and filmed by a camera built from math. Three browser techniques do the work.
+
+### 1. CSS 3D: the space, the camera and the glass UI
+
+- `src/cine/camera.tsx` is a real 3D camera layered on CSS. It computes 4×4 matrices (`m4rotX`, `m4rotY`, `m4translate`… in `src/cine/math.ts`), writes them out as `transform: matrix3d(...)`, and turns a 35mm-equivalent focal length into CSS `perspective` (`focalToPersp`).
+- That gives the film real cinema language: lens choice, orbit, look-at, roll, dolly, crane and whip pans, all keyframed per frame.
+- A `<World>` holds `<Obj>` elements positioned in world pixels. Every UI pane, glass orb, monolith and bot card is an ordinary `<div>` in a `preserve-3d` tree, so the "exploding glass layers" are just HTML elements pushed apart along Z.
+
+### 2. SVG: lines, graphs and shapes
+
+The state-graph edges, energy beams, the policy "circuit", icons and the robot avatar are all vector shapes.
+
+### 3. Canvas2D: anything too heavy for the DOM
+
+Film grain, the starfield and dust, nebulae and noise textures would take thousands of DOM nodes, so they're drawn as pixels on a `<canvas>` (`src/vfx/finish.tsx`, `src/vfx/env.tsx`).
+
+### What makes it look expensive
+
+- **Gradients everywhere.** Glows, bloom, luminous glass rims and lens flares are radial and linear gradients. Large `filter: blur()`s are too slow in software rendering, so the film avoids them.
+- **Fake depth of field and motion blur.** These are layered in `src/cine/dof.tsx` and `src/cine/blur.tsx`.
+- **Light that follows the music.** Glows pulse and the camera pushes on every kick, driven by `src/audio.json`.
+- **The real product designs.** The PNGs in `assets/designs/` appear in the s05 editor and the s10 montage. They're the only images in the film.
+
+### Why not WebGL?
+
+Remotion renders each frame in headless Chromium with no GPU. There, CSS 3D renders identically every time and is fast enough, while WebGL is slow and less predictable frame to frame. The trade-off is that the film has no real lighting, shadows or meshes. Everything is a flat plane at an angle, made to look like light through glass.
 
 ---
 
