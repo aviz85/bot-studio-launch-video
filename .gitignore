@@ -1,7 +1,18 @@
+# OS / env
 .DS_Store
+.env*
+
+# Dependencies & build output
+node_modules/
+out/
+.preview/
+sfx/__pycache__/
+sfx/build/
+
+# Generated media (rebuilt by npm run assets / sfx/mix.py / render.mjs)
+public/designs/
+public/music.wav
+public/mix.wav
 *.mp4
 *.mov
 *.wav
-*.mp3
-.env*
-node_modules/
