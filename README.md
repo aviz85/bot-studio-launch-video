@@ -19,13 +19,14 @@ A 76.5-second, music-only, sci-fi launch film for **Bot Studio**, a bot builder 
 1. [Quick start](#quick-start)
 2. [How the film works](#how-the-film-works)
 3. [Rendering technique: 3D without WebGL](#rendering-technique-3d-without-webgl)
-4. [Story and edit map](#story-and-edit-map)
-5. [Project layout](#project-layout)
-6. [Preview and check tools](#preview-and-check-tools)
-7. [The rules that keep it reliable](#the-rules-that-keep-it-reliable)
-8. [How it was made](#how-it-was-made)
-9. [Further reading](#further-reading)
-10. [Provenance and licensing](#provenance-and-licensing)
+4. [How the camera works](#how-the-camera-works)
+5. [Story and edit map](#story-and-edit-map)
+6. [Project layout](#project-layout)
+7. [Preview and check tools](#preview-and-check-tools)
+8. [The rules that keep it reliable](#the-rules-that-keep-it-reliable)
+9. [How it was made](#how-it-was-made)
+10. [Further reading](#further-reading)
+11. [Provenance and licensing](#provenance-and-licensing)
 
 ---
 
@@ -132,9 +133,28 @@ The film looks like a 3D motion-graphics piece, but it contains **no WebGL, no t
 
 The state-graph edges, energy beams, the policy "circuit", icons and the robot avatar are all vector shapes.
 
-### 3. Canvas2D: anything too heavy for the DOM
+### 3. Canvas2D: particles, textures and light
 
-Film grain, the starfield and dust, nebulae and noise textures would take thousands of DOM nodes, so they're drawn as pixels on a `<canvas>` (`src/vfx/finish.tsx`, `src/vfx/env.tsx`).
+Every frame renders in software Chromium with no GPU, so each effect uses whatever is cheapest per frame. For anything made of **many small pieces** or **per-pixel texture**, that's a canvas. Most of the VFX library in `src/vfx/` is Canvas2D:
+
+- **Particles.** Dust, bokeh, sparkles, embers and spark explosions are hundreds to thousands of points. As DOM or SVG nodes, each would go through style, layout and paint every frame. On a canvas each one is a single draw call on one surface.
+- **Pixel textures.** Film grain, noise and the nebula have no shapes, only per-pixel values, so they can only be painted.
+- **Light.** Lens flares, shockwaves and volumetric light shafts are drawn additively (`lighter`) inside the canvas, then composited normally. That costs **~4 ms per full-frame layer, versus ~40 ms** with CSS `mix-blend-mode: screen` (see [`docs/VFX.md`](docs/VFX.md)).
+- **Projected 3D.** The holo grid floor and tunnel (`HoloGrid`, `HoloTunnel`) are projected with math and drawn flat instead of being built from CSS 3D elements.
+
+The canvases stay cheap through a few tricks:
+
+- **Paint once, reuse every frame.** The nebula is generated once per page and cached. Grain is painted once as an oversized tile, and each frame blits it at a seeded offset. The vignette is a static canvas.
+- **Half resolution for soft layers.** Light shafts and glow pools render at half resolution, which is 4× fewer pixels and invisible in a soft layer.
+- **Shared surfaces.** Dust, bokeh and sparkles share one canvas.
+
+### Which technique for what
+
+| Technique | Good at | Used for |
+| --- | --- | --- |
+| CSS 3D | A few large, sharp objects moving in space | UI panes, cards, glass orbs, monoliths |
+| SVG | Precise lines and vector shapes | Graph edges, beams, icons, avatar, the floor grid |
+| Canvas2D | Many small pieces, textures, additive light | Particles, grain, nebula, flares, shockwaves, light shafts, holo floor and tunnel |
 
 ### What makes it look expensive
 
@@ -146,6 +166,68 @@ Film grain, the starfield and dust, nebulae and noise textures would take thousa
 ### Why not WebGL?
 
 Remotion renders each frame in headless Chromium with no GPU. There, CSS 3D renders identically every time and is fast enough, while WebGL is slow and less predictable frame to frame. The trade-off is that the film has no real lighting, shadows or meshes. Everything is a flat plane at an angle, made to look like light through glass.
+
+---
+
+## How the camera works
+
+CSS has no camera. So instead of moving a camera, the film **moves the whole world the opposite way**. Everything lives in [`src/cine/camera.tsx`](src/cine/camera.tsx), and the full API is in [`docs/CINE.md`](docs/CINE.md).
+
+### 1. Described in a cinematographer's terms (`CamSpec`)
+
+Scenes describe shots in film language, not matrices. There are three ways to aim:
+
+- **Orbit (the default):** a `target` plus `yaw` (swing left/right), `pitch` (look up/down) and `dist`. The camera always faces the target.
+- **Free:** a `pos` plus a `lookAt` point.
+- **Free with explicit angles:** a `pos` plus `yaw`/`pitch`.
+
+On top of the aim:
+
+- **Lens:** `focal` in mm (35 by default), like a real camera.
+- **Camera moves:** `roll` (dutch angle), `pan`/`tilt` (rotate in place, for whips and handheld), and `truck`/`pedestal`/`dolly` (move along the camera's own right, up and forward axes).
+- **2D post-projection:** `zoom`, `shiftX` and `shiftY` are cheap punches applied after the 3D projection.
+
+### 2. The math: `resolveCam()`
+
+`resolveCam()` turns a `CamSpec` into:
+
+1. the camera's position (in orbit mode, the target pushed back by `dist` along the viewing direction),
+2. a right / down / forward basis built from yaw, pitch and roll,
+3. a 4×4 **view matrix**: the inverse of the camera's position and rotation.
+
+### 3. The CSS: two nested divs are the whole camera (`<World>`)
+
+```html
+<div style="perspective: 1867px">                     <!-- the lens: focal length → CSS perspective -->
+  <div style="transform-style: preserve-3d;
+              transform: matrix3d(/* view matrix */)">  <!-- the world, moved opposite to the camera -->
+    <Obj x y z rx ry rz> … </Obj>                       <!-- objects in fixed world coordinates -->
+  </div>
+</div>
+```
+
+- **The outer div is the lens.** `focalToPersp()` converts mm to CSS `perspective` for a 1920 px frame (35 mm ≈ 1867 px).
+- **The inner div is the world.** It carries the view matrix as `matrix3d`. When the camera moves right, the world moves left, and Chromium does the perspective projection.
+- **Every `<Obj>`** (glass pane, orb, card) sits at fixed world `x, y, z` and rotations. Objects never move to fake a camera move; only the camera does.
+
+### 4. Motion: keyframes, moves and life
+
+- **`camPath(t, keys)`** (`src/cine/path.ts`) interpolates camera keyframes along a smooth Hermite curve with easing. The camera is recomputed from scratch each frame as a pure function of the frame number.
+- **Ready-made moves** (`moves` in `path.ts`): `dollyIn`, `dollyOut`, `craneUp`, `craneDown`, `orbit` and more.
+- **Speed ramps** (`src/cine/ramp.ts`): `heroRamp`, `snapIn`, `snapOut` and `slowMoHold` speed time up or slow it down inside a shot.
+- **Life on top,** merged with `addCam()`:
+  - `handheld()`: deterministic noise that feels like an operator's hands.
+  - `drift()`: a slow float for calm shots.
+  - `kickPush()`, `kickZoom()`, `kickShake()`: the camera pushes in, punch-zooms or jolts on every kick of the music.
+
+### 5. A real lens, faked
+
+- **Depth of field.** For each `Obj`, `depthOf()` measures its distance from the lens. A circle of confusion against the focus distance (`focus`, `aperture` on `<World>`) becomes a matching `blur`, so things in front of or behind focus go soft.
+- **Culling.** Objects behind the camera or closer than `near` aren't rendered, and `nearFade` fades them out as they reach the lens.
+- **Billboards.** An `Obj` can always face the camera, which is handy for HUD elements.
+- **`project()`** returns the screen position, depth and scale of any world point. That's how canvas and SVG effects (flares, reticles, the floor grid) stay locked to the 3D objects.
+
+The `FloorGrid` shows why this matters. A CSS 3D plane that size costs **0.5–2 s per frame** to render. `FloorGrid` uses the same camera math to project the grid lines and draws them as one batched SVG in about **1 ms**. CSS 3D is kept for the "real" objects, and everything else is drawn in 2D through the exact same camera.
 
 ---
 
